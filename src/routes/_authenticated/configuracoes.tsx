@@ -14,10 +14,16 @@ import { Settings, Save, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/configuracoes")({
   beforeLoad: async () => {
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) throw redirect({ to: "/auth" });
-    const { data: perfil } = await supabase.from("users_profiles").select("role").eq("user_id", u.user.id).maybeSingle();
-    if (!perfil || perfil.role !== "admin") throw redirect({ to: "/" });
+    if (typeof window === "undefined") return;
+    try {
+      const { data: s } = await supabase.auth.getSession();
+      if (!s.session?.user) throw redirect({ to: "/auth" });
+      const { data: perfil } = await supabase.from("users_profiles").select("role").eq("user_id", s.session.user.id).maybeSingle();
+      if (!perfil || perfil.role !== "admin") throw redirect({ to: "/" });
+    } catch (err) {
+      if ((err as any)?.to) throw err;
+      throw redirect({ to: "/auth" });
+    }
   },
   head: () => ({ meta: [{ title: "Configurações — FitLife" }] }),
   component: ConfiguracoesPage,

@@ -12,8 +12,13 @@ import { handleError } from "@/lib/errors";
 export const Route = createFileRoute("/auth")({
   ssr: false,
   beforeLoad: async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data.user) throw redirect({ to: "/" });
+    if (typeof window === "undefined") return;
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.user) throw redirect({ to: "/" });
+    } catch (err) {
+      if ((err as any)?.to) throw err;
+    }
   },
   head: () => ({ meta: [{ title: "Acessar Sistema — FitLife SisEVS" }] }),
   component: AuthPage,
