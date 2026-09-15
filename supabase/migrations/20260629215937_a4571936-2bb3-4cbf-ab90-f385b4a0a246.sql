@@ -361,7 +361,7 @@ BEGIN
     INSERT INTO public.financeiro_lancamentos(
       tipo, categoria, descricao, valor, forma_pagamento, data, data_lancamento,
       pedido_id, usuario_id, status, referencia_tipo, referencia_id, caixa_id
-    ) VALUES ('entrada','Venda FitLounge','Pedido #' || p.numero || COALESCE(' • '||_obs,''),
+    ) VALUES ('entrada','Venda FitLife','Pedido #' || p.numero || COALESCE(' • '||_obs,''),
       _valor, _forma, now()::date, now(), _pedido_id, _uid, 'ativo','pedido_pagamento', _novo_pp, _caixa)
     RETURNING id INTO _lanc;
 

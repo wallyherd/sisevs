@@ -8,7 +8,7 @@ ALTER TABLE public.configuracoes_loja
 
 -- Garante uma linha
 INSERT INTO public.configuracoes_loja (nome_loja)
-SELECT 'FitLounge' WHERE NOT EXISTS (SELECT 1 FROM public.configuracoes_loja);
+SELECT 'FitLife' WHERE NOT EXISTS (SELECT 1 FROM public.configuracoes_loja);
 
 -- 2. Reabertura de comanda
 ALTER TABLE public.pedidos

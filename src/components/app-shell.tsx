@@ -22,6 +22,7 @@ import {
   Blocks,
   ShieldCheck,
   ChevronRight,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -111,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="leading-none">
             <div className="font-heading font-semibold text-base tracking-tight text-white flex items-center gap-1.5">
-              FitLounge
+              FitLife
               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 PRO
               </span>
@@ -168,8 +169,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="w-full flex items-center gap-3 rounded-lg p-2 hover:bg-sidebar-accent/60 text-left transition-colors group">
-                <div className="relative size-8 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-800 text-white flex items-center justify-center text-xs font-bold shadow-xs">
-                  {(perfil?.nome ?? "U").slice(0, 2).toUpperCase()}
+                <div className="relative size-8 rounded-lg overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-800 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                  {user?.user_metadata?.avatar_url ? (
+                    <img src={user.user_metadata.avatar_url} alt="Avatar" className="size-full object-cover" />
+                  ) : (
+                    (perfil?.nome ?? "U").slice(0, 2).toUpperCase()
+                  )}
                   <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 border-2 border-sidebar" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -183,8 +188,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal text-xs text-muted-foreground truncate">
-                {perfil?.email}
+                {perfil?.email || user?.email}
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/perfil" className="cursor-pointer flex items-center">
+                  <User className="mr-2 size-4 text-emerald-500" /> Meu Perfil
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
                 <LogOut className="mr-2 size-4" /> Sair da conta
@@ -211,7 +222,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <div className="size-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
                     <Leaf className="size-5" />
                   </div>
-                  <div className="font-heading font-semibold text-white text-base">FitLounge</div>
+                  <div className="font-heading font-semibold text-white text-base">FitLife</div>
                 </div>
                 <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
                   {NAV_GROUPS.map((group) => {
@@ -301,6 +312,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
           <SheetContent side="bottom" className="rounded-t-2xl">
             <div className="grid grid-cols-3 gap-3 py-2">
+              <Link
+                to="/perfil"
+                onClick={() => setMoreOpen(false)}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary hover:bg-muted text-foreground transition-colors"
+              >
+                <User className="size-5 text-emerald-600" />
+                <span className="text-xs text-center font-medium">Meu Perfil</span>
+              </Link>
               {moreItems.map((item) => {
                 const Icon = item.icon;
                 return (

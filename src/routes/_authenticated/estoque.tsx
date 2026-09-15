@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { Package, Plus, Pencil, ArrowDown, ArrowUp, AlertTriangle, History, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/estoque")({
-  head: () => ({ meta: [{ title: "Estoque — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Estoque — FitLife" }] }),
   component: EstoquePage,
 });
 

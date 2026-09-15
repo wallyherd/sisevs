@@ -36,7 +36,7 @@ BEGIN
   IF NEW.status_pagamento = 'pago' AND COALESCE(OLD.status_pagamento,'pendente') <> 'pago' THEN
     IF NOT EXISTS (SELECT 1 FROM public.financeiro_lancamentos WHERE pedido_id = NEW.id AND status='ativo') THEN
       INSERT INTO public.financeiro_lancamentos(tipo, categoria, descricao, valor, forma_pagamento, data, pedido_id, usuario_id, status, referencia_tipo, referencia_id)
-      VALUES ('entrada','Venda FitLounge','Pedido #' || NEW.numero, NEW.total, NEW.forma_pagamento, COALESCE(NEW.pago_em, now())::date, NEW.id, COALESCE(NEW.baixado_por, NEW.usuario_id), 'ativo','pedido', NEW.id);
+      VALUES ('entrada','Venda FitLife','Pedido #' || NEW.numero, NEW.total, NEW.forma_pagamento, COALESCE(NEW.pago_em, now())::date, NEW.id, COALESCE(NEW.baixado_por, NEW.usuario_id), 'ativo','pedido', NEW.id);
     END IF;
   ELSIF (NEW.status_pedido = 'cancelado' OR NEW.status_pagamento = 'cancelado')
         AND (COALESCE(OLD.status_pedido,'') <> 'cancelado' AND COALESCE(OLD.status_pagamento,'') <> 'cancelado') THEN

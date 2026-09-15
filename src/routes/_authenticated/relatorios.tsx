@@ -15,7 +15,7 @@ import { rangeFor, csvDownload, printRelatorio, type Periodo } from "@/lib/relat
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
-  head: () => ({ meta: [{ title: "Relatórios — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Relatórios — FitLife" }] }),
   component: RelatoriosPage,
 });
 

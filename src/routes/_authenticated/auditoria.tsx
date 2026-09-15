@@ -13,7 +13,7 @@ import { ShieldCheck, Download } from "lucide-react";
 import { csvDownload } from "@/lib/relatorios";
 
 export const Route = createFileRoute("/_authenticated/auditoria")({
-  head: () => ({ meta: [{ title: "Auditoria — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Auditoria — FitLife" }] }),
   component: AuditoriaPage,
 });
 

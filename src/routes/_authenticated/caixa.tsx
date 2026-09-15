@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/caixa")({
-  head: () => ({ meta: [{ title: "Caixa — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Caixa — FitLife" }] }),
   component: CaixaPage,
 });
 

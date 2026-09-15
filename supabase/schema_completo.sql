@@ -531,7 +531,7 @@ FOR EACH ROW EXECUTE FUNCTION public.tg_meu_slim_financeiro();
 -- =========================================================
 CREATE TABLE public.configuracoes_loja (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nome_loja TEXT NOT NULL DEFAULT 'FitLounge',
+  nome_loja TEXT NOT NULL DEFAULT 'FitLife',
   logo_url TEXT,
   cnpj TEXT,
   endereco TEXT,
@@ -546,7 +546,7 @@ CREATE TRIGGER trg_config_updated_at BEFORE UPDATE ON public.configuracoes_loja 
 CREATE POLICY "Auth: ler config" ON public.configuracoes_loja FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Admin: gerenciar config" ON public.configuracoes_loja FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
-INSERT INTO public.configuracoes_loja (nome_loja) VALUES ('FitLounge');
+INSERT INTO public.configuracoes_loja (nome_loja) VALUES ('FitLife');
 
 -- =========================================================
 -- VIEWS
@@ -695,7 +695,7 @@ BEGIN
   IF NEW.status_pagamento = 'pago' AND COALESCE(OLD.status_pagamento,'pendente') <> 'pago' THEN
     IF NOT EXISTS (SELECT 1 FROM public.financeiro_lancamentos WHERE pedido_id = NEW.id AND status='ativo') THEN
       INSERT INTO public.financeiro_lancamentos(tipo, categoria, descricao, valor, forma_pagamento, data, pedido_id, usuario_id, status, referencia_tipo, referencia_id)
-      VALUES ('entrada','Venda FitLounge','Pedido #' || NEW.numero, NEW.total, NEW.forma_pagamento, COALESCE(NEW.pago_em, now())::date, NEW.id, COALESCE(NEW.baixado_por, NEW.usuario_id), 'ativo','pedido', NEW.id);
+      VALUES ('entrada','Venda FitLife','Pedido #' || NEW.numero, NEW.total, NEW.forma_pagamento, COALESCE(NEW.pago_em, now())::date, NEW.id, COALESCE(NEW.baixado_por, NEW.usuario_id), 'ativo','pedido', NEW.id);
     END IF;
   ELSIF (NEW.status_pedido = 'cancelado' OR NEW.status_pagamento = 'cancelado')
         AND (COALESCE(OLD.status_pedido,'') <> 'cancelado' AND COALESCE(OLD.status_pagamento,'') <> 'cancelado') THEN
@@ -1109,7 +1109,7 @@ BEGIN
         tipo, categoria, descricao, valor, forma_pagamento, data,
         pedido_id, usuario_id, status, referencia_tipo, referencia_id
       ) VALUES (
-        'entrada','Venda FitLounge','Pedido #' || NEW.numero,
+        'entrada','Venda FitLife','Pedido #' || NEW.numero,
         NEW.total, NEW.forma_pagamento,
         COALESCE(NEW.pago_em, now())::date,
         NEW.id, COALESCE(NEW.baixado_por, NEW.usuario_id),
@@ -1407,7 +1407,7 @@ BEGIN
       tipo, categoria, descricao, valor, forma_pagamento, data, data_lancamento,
       pedido_id, usuario_id, status, referencia_tipo, referencia_id, caixa_id
     ) VALUES (
-      'entrada','Venda FitLounge','Pedido #' || p.numero || COALESCE(' • '||_obs,''),
+      'entrada','Venda FitLife','Pedido #' || p.numero || COALESCE(' • '||_obs,''),
       _valor, _forma, now()::date, now(),
       _pedido_id, _uid, 'ativo', 'pedido_pagamento', _novo_pp, _caixa
     ) RETURNING id INTO _lanc;
@@ -1869,7 +1869,7 @@ BEGIN
     INSERT INTO public.financeiro_lancamentos(
       tipo, categoria, descricao, valor, forma_pagamento, data, data_lancamento,
       pedido_id, usuario_id, status, referencia_tipo, referencia_id, caixa_id
-    ) VALUES ('entrada','Venda FitLounge','Pedido #' || p.numero || COALESCE(' • '||_obs,''),
+    ) VALUES ('entrada','Venda FitLife','Pedido #' || p.numero || COALESCE(' • '||_obs,''),
       _valor, _forma, now()::date, now(), _pedido_id, _uid, 'ativo','pedido_pagamento', _novo_pp, _caixa)
     RETURNING id INTO _lanc;
 
@@ -2052,7 +2052,7 @@ ALTER TABLE public.configuracoes_loja
 
 -- Garante uma linha
 INSERT INTO public.configuracoes_loja (nome_loja)
-SELECT 'FitLounge' WHERE NOT EXISTS (SELECT 1 FROM public.configuracoes_loja);
+SELECT 'FitLife' WHERE NOT EXISTS (SELECT 1 FROM public.configuracoes_loja);
 
 -- 2. Reabertura de comanda
 ALTER TABLE public.pedidos

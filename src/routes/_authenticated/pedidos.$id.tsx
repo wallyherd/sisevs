@@ -26,7 +26,7 @@ import {
 } from "@/lib/pedido-fluxo";
 
 export const Route = createFileRoute("/_authenticated/pedidos/$id")({
-  head: () => ({ meta: [{ title: "Comanda — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Comanda — FitLife" }] }),
   component: ComandaDetailPage,
 });
 

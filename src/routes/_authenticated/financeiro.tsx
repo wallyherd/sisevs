@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/financeiro")({
     const { data: perfil } = await supabase.from("users_profiles").select("role,pode_ver_financeiro").eq("user_id", u.user.id).maybeSingle();
     if (!perfil || (perfil.role !== "admin" && !perfil.pode_ver_financeiro)) throw redirect({ to: "/" });
   },
-  head: () => ({ meta: [{ title: "Financeiro — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Financeiro — FitLife" }] }),
   component: FinanceiroPage,
 });
 

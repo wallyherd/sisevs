@@ -17,7 +17,7 @@ import { clienteSchema, formatZodError } from "@/lib/validations";
 import { handleError } from "@/lib/errors";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
-  head: () => ({ meta: [{ title: "Clientes — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Clientes — FitLife" }] }),
   component: ClientesPage,
 });
 

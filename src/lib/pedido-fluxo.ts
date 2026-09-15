@@ -1,4 +1,4 @@
-// Fluxo de Comanda do FitLounge
+// Fluxo de Comanda do FitLife
 // 1. Abrir comanda → 2. Em consumo (adicionando itens) → 3. Aguardando pagamento → 4. Paga
 // Cancelamento possível antes do pagamento.
 

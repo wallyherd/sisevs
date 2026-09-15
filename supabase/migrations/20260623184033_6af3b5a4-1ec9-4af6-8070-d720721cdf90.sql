@@ -526,7 +526,7 @@ FOR EACH ROW EXECUTE FUNCTION public.tg_meu_slim_financeiro();
 -- =========================================================
 CREATE TABLE public.configuracoes_loja (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nome_loja TEXT NOT NULL DEFAULT 'FitLounge',
+  nome_loja TEXT NOT NULL DEFAULT 'FitLife',
   logo_url TEXT,
   cnpj TEXT,
   endereco TEXT,
@@ -541,7 +541,7 @@ CREATE TRIGGER trg_config_updated_at BEFORE UPDATE ON public.configuracoes_loja 
 CREATE POLICY "Auth: ler config" ON public.configuracoes_loja FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Admin: gerenciar config" ON public.configuracoes_loja FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
 
-INSERT INTO public.configuracoes_loja (nome_loja) VALUES ('FitLounge');
+INSERT INTO public.configuracoes_loja (nome_loja) VALUES ('FitLife');
 
 -- =========================================================
 -- VIEWS

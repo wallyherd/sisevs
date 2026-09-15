@@ -15,7 +15,7 @@ export const Route = createFileRoute("/auth")({
     const { data } = await supabase.auth.getUser();
     if (data.user) throw redirect({ to: "/" });
   },
-  head: () => ({ meta: [{ title: "Acessar Sistema — FitLounge SisEVS" }] }),
+  head: () => ({ meta: [{ title: "Acessar Sistema — FitLife SisEVS" }] }),
   component: AuthPage,
 });
 
@@ -79,7 +79,7 @@ function AuthPage() {
           </div>
           <div>
             <div className="font-heading text-lg font-bold tracking-tight text-white flex items-center gap-2">
-              FitLounge
+              FitLife
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                 SisEVS
               </span>
@@ -117,7 +117,7 @@ function AuthPage() {
 
         {/* Footer info */}
         <div className="relative z-10 flex items-center justify-between text-xs text-slate-400 pt-6 border-t border-white/10">
-          <span>FitLounge SisEVS &copy; {new Date().getFullYear()}</span>
+          <span>FitLife SisEVS &copy; {new Date().getFullYear()}</span>
           <span className="flex items-center gap-1 text-emerald-400 font-medium">
             <CheckCircle2 className="size-3.5" /> Sistema Operacional
           </span>
@@ -132,7 +132,7 @@ function AuthPage() {
             <div className="size-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
               <Leaf className="size-5" />
             </div>
-            <div className="font-heading text-lg font-bold">FitLounge SisEVS</div>
+            <div className="font-heading text-lg font-bold">FitLife SisEVS</div>
           </div>
 
           {/* Form Header */}

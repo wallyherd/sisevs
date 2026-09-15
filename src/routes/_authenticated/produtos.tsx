@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Package, Tag, Sparkles, ShieldOff } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/produtos")({
-  head: () => ({ meta: [{ title: "Produtos — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Produtos — FitLife" }] }),
   component: ProdutosPage,
 });
 

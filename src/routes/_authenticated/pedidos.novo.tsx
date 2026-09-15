@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ChevronRight, Search, UserPlus, User2, UserCheck, Coffee } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/pedidos/novo")({
-  head: () => ({ meta: [{ title: "Nova comanda — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Nova comanda — FitLife" }] }),
   component: NovaComandaPage,
 });
 

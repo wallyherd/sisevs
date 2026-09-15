@@ -12,7 +12,7 @@ BEGIN
         tipo, categoria, descricao, valor, forma_pagamento, data,
         pedido_id, usuario_id, status, referencia_tipo, referencia_id
       ) VALUES (
-        'entrada','Venda FitLounge','Pedido #' || NEW.numero,
+        'entrada','Venda FitLife','Pedido #' || NEW.numero,
         NEW.total, NEW.forma_pagamento,
         COALESCE(NEW.pago_em, now())::date,
         NEW.id, COALESCE(NEW.baixado_por, NEW.usuario_id),
@@ -310,7 +310,7 @@ BEGIN
       tipo, categoria, descricao, valor, forma_pagamento, data, data_lancamento,
       pedido_id, usuario_id, status, referencia_tipo, referencia_id, caixa_id
     ) VALUES (
-      'entrada','Venda FitLounge','Pedido #' || p.numero || COALESCE(' • '||_obs,''),
+      'entrada','Venda FitLife','Pedido #' || p.numero || COALESCE(' • '||_obs,''),
       _valor, _forma, now()::date, now(),
       _pedido_id, _uid, 'ativo', 'pedido_pagamento', _novo_pp, _caixa
     ) RETURNING id INTO _lanc;

@@ -16,7 +16,7 @@ import { Blocks, Plus, Trash2 } from "lucide-react";
 import { Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/composicao")({
-  head: () => ({ meta: [{ title: "Composição — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Composição — FitLife" }] }),
   component: ComposicaoPage,
 });
 

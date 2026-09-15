@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/configuracoes")({
     const { data: perfil } = await supabase.from("users_profiles").select("role").eq("user_id", u.user.id).maybeSingle();
     if (!perfil || perfil.role !== "admin") throw redirect({ to: "/" });
   },
-  head: () => ({ meta: [{ title: "Configurações — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Configurações — FitLife" }] }),
   component: ConfiguracoesPage,
 });
 

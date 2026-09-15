@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { Sparkles, Plus, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/meu-slim")({
-  head: () => ({ meta: [{ title: "Meu Slim — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Meu Slim — FitLife" }] }),
   component: MeuSlimPage,
 });
 

@@ -10,7 +10,7 @@ import { ChefHat, Clock, Flame, CheckCircle2, X, PackageCheck } from "lucide-rea
 import { PREPARO_COLOR, PREPARO_LABEL, MOTIVOS_CANCELAMENTO } from "@/lib/pedido-fluxo";
 
 export const Route = createFileRoute("/_authenticated/cozinha")({
-  head: () => ({ meta: [{ title: "Cozinha — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Cozinha — FitLife" }] }),
   component: CozinhaPage,
 });
 

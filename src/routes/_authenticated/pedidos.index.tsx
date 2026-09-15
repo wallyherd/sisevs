@@ -10,7 +10,7 @@ import { Plus, Receipt, ChevronRight, Clock } from "lucide-react";
 import { STATUS_COMANDA_COLOR, STATUS_COMANDA_LABEL } from "@/lib/pedido-fluxo";
 
 export const Route = createFileRoute("/_authenticated/pedidos/")({
-  head: () => ({ meta: [{ title: "Comandas — FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Comandas — FitLife" }] }),
   component: ComandasListPage,
 });
 
