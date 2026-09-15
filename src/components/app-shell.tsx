@@ -107,8 +107,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex w-64 shrink-0 flex-col text-sidebar-foreground border-r border-sidebar-border bg-sidebar">
         {/* Brand Header */}
         <div className="px-5 h-16 flex items-center gap-3 border-b border-sidebar-border">
-          <div className="size-9 rounded-lg bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white flex items-center justify-center shadow-md shadow-emerald-950/40">
-            <Leaf className="size-5" />
+          <div className="size-10 rounded-xl overflow-hidden bg-white/95 p-1 border border-emerald-500/30 flex items-center justify-center shadow-md shadow-emerald-950/40">
+            <img src="/logo.png" alt="FitLife" className="size-full object-contain" />
           </div>
           <div className="leading-none">
             <div className="font-heading font-semibold text-base tracking-tight text-white flex items-center gap-1.5">
@@ -117,7 +117,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 PRO
               </span>
             </div>
-            <div className="text-[11px] text-sidebar-foreground/50 mt-1">Gestão de EVS</div>
+            <div className="text-[11px] text-sidebar-foreground/50 mt-1">Espaço Vida Saudável</div>
           </div>
         </div>
 
@@ -219,10 +219,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </SheetTrigger>
               <SheetContent side="left" className="w-72 p-0 text-sidebar-foreground border-sidebar-border bg-sidebar flex flex-col">
                 <div className="px-5 h-16 flex items-center gap-3 border-b border-sidebar-border">
-                  <div className="size-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-                    <Leaf className="size-5" />
+                  <div className="size-10 rounded-xl overflow-hidden bg-white/95 p-1 border border-emerald-500/30 flex items-center justify-center shadow-md">
+                    <img src="/logo.png" alt="FitLife" className="size-full object-contain" />
                   </div>
-                  <div className="font-heading font-semibold text-white text-base">FitLife</div>
+                  <div>
+                    <div className="font-heading font-semibold text-white text-base leading-none">FitLife</div>
+                    <div className="text-[10px] text-sidebar-foreground/50 mt-1">Espaço Vida Saudável</div>
+                  </div>
                 </div>
                 <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
                   {NAV_GROUPS.map((group) => {

@@ -79,8 +79,8 @@ function AuthPage() {
 
         {/* Top Brand */}
         <div className="relative z-10 flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-emerald-300 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/20 font-bold">
-            <Leaf className="size-5" />
+          <div className="size-12 rounded-2xl overflow-hidden bg-white/95 p-1 border border-emerald-500/30 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <img src="/logo.png" alt="FitLife" className="size-full object-contain" />
           </div>
           <div>
             <div className="font-heading text-lg font-bold tracking-tight text-white flex items-center gap-2">
@@ -89,7 +89,7 @@ function AuthPage() {
                 SisEVS
               </span>
             </div>
-            <div className="text-xs text-slate-400">Plataforma de Gestão Inteligente</div>
+            <div className="text-xs text-slate-400">Espaço Vida Saudável</div>
           </div>
         </div>
 
@@ -133,11 +133,14 @@ function AuthPage() {
       <div className="lg:col-span-7 xl:col-span-7 flex items-center justify-center p-6 md:p-12 lg:p-16">
         <div className="w-full max-w-md space-y-8">
           {/* Mobile Brand Header */}
-          <div className="lg:hidden flex items-center justify-center gap-2.5 mb-2">
-            <div className="size-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-              <Leaf className="size-5" />
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-2">
+            <div className="size-10 rounded-xl overflow-hidden bg-white/95 p-1 border border-emerald-500/30 flex items-center justify-center shadow-md">
+              <img src="/logo.png" alt="FitLife" className="size-full object-contain" />
             </div>
-            <div className="font-heading text-lg font-bold">FitLife SisEVS</div>
+            <div>
+              <div className="font-heading text-lg font-bold leading-tight">FitLife</div>
+              <div className="text-[10px] text-muted-foreground">Espaço Vida Saudável</div>
+            </div>
           </div>
 
           {/* Form Header */}
