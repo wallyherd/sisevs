@@ -4,9 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Leaf } from "lucide-react";
+import { Leaf, ShieldCheck, Zap, BarChart3, CheckCircle2, ArrowRight } from "lucide-react";
 import { loginSchema, signupSchema, formatZodError } from "@/lib/validations";
 import { handleError } from "@/lib/errors";
 
@@ -16,7 +15,7 @@ export const Route = createFileRoute("/auth")({
     const { data } = await supabase.auth.getUser();
     if (data.user) throw redirect({ to: "/" });
   },
-  head: () => ({ meta: [{ title: "Entrar — Gestão FitLounge" }] }),
+  head: () => ({ meta: [{ title: "Acessar Sistema — FitLounge SisEVS" }] }),
   component: AuthPage,
 });
 
@@ -66,61 +65,181 @@ function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-app-radial bg-background p-4">
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="size-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
+    <div className="min-h-screen grid lg:grid-cols-12 bg-background text-foreground">
+      {/* Left Column: Brand Hero & Presentation */}
+      <div className="hidden lg:flex lg:col-span-5 xl:col-span-5 bg-gradient-to-b from-[#061e16] via-[#041610] to-[#020b08] text-white p-12 flex-col justify-between relative overflow-hidden border-r border-[#0e3d2f]">
+        {/* Subtle Ambient Glow */}
+        <div className="absolute -top-32 -left-32 size-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -right-32 size-96 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
+
+        {/* Top Brand */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-emerald-300 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/20 font-bold">
             <Leaf className="size-5" />
           </div>
           <div>
-            <div className="font-heading text-xl font-bold leading-tight">FitLounge</div>
-            <div className="text-xs text-muted-foreground -mt-0.5">Gestão da loja</div>
+            <div className="font-heading text-lg font-bold tracking-tight text-white flex items-center gap-2">
+              FitLounge
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                SisEVS
+              </span>
+            </div>
+            <div className="text-xs text-slate-400">Plataforma de Gestão Inteligente</div>
           </div>
         </div>
 
-        <Card className="border-border/60 shadow-xl">
-          <CardHeader>
-            <CardTitle className="font-heading text-2xl">
-              {mode === "login" ? "Entrar" : "Criar conta"}
-            </CardTitle>
-            <CardDescription>
-              {mode === "login"
-                ? "Acesse o painel para registrar pedidos, gerenciar estoque e mais."
-                : "A primeira conta criada se torna administradora."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {mode === "signup" && (
-                <div className="space-y-2">
-                  <Label htmlFor="nome">Nome</Label>
-                  <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} required />
-                </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} autoComplete={mode === "login" ? "current-password" : "new-password"} />
-              </div>
-              <Button type="submit" className="w-full h-11 text-base" disabled={loading}>
-                {loading ? "Carregando..." : mode === "login" ? "Entrar" : "Criar conta"}
-              </Button>
-            </form>
-            <div className="mt-4 text-center text-sm text-muted-foreground">
-              {mode === "login" ? (
-                <>Sem conta? <button className="text-primary hover:underline font-medium" onClick={() => setMode("signup")}>Criar agora</button></>
-              ) : (
-                <>Já tem conta? <button className="text-primary hover:underline font-medium" onClick={() => setMode("login")}>Entrar</button></>
-              )}
+        {/* Center Presentation */}
+        <div className="relative z-10 my-auto py-12 space-y-8">
+          <div className="space-y-4 max-w-md">
+            <h2 className="text-3xl font-heading font-bold text-white leading-tight">
+              Controle absoluto do seu espaço com precisão profissional.
+            </h2>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Agilidade nas comandas, integração em tempo real com a cozinha, auditoria minuciosa e fechamento de caixa sem discrepâncias.
+            </p>
+          </div>
+
+          <div className="space-y-3.5 pt-2">
+            <div className="flex items-center gap-3 text-xs text-slate-200 bg-white/5 p-3 rounded-lg border border-white/10 backdrop-blur-sm">
+              <Zap className="size-4 text-emerald-400 shrink-0" />
+              <span>Fila de preparo e comandas com sincronização instantânea</span>
             </div>
-          </CardContent>
-        </Card>
-        <p className="text-center text-xs text-muted-foreground mt-4">
-          <Link to="/" className="hover:underline">Voltar</Link>
-        </p>
+            <div className="flex items-center gap-3 text-xs text-slate-200 bg-white/5 p-3 rounded-lg border border-white/10 backdrop-blur-sm">
+              <BarChart3 className="size-4 text-emerald-400 shrink-0" />
+              <span>DRE automático, métricas de faturamento e margem real</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-slate-200 bg-white/5 p-3 rounded-lg border border-white/10 backdrop-blur-sm">
+              <ShieldCheck className="size-4 text-emerald-400 shrink-0" />
+              <span>Segurança avançada com controle de perfis e permissões</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer info */}
+        <div className="relative z-10 flex items-center justify-between text-xs text-slate-400 pt-6 border-t border-white/10">
+          <span>FitLounge SisEVS &copy; {new Date().getFullYear()}</span>
+          <span className="flex items-center gap-1 text-emerald-400 font-medium">
+            <CheckCircle2 className="size-3.5" /> Sistema Operacional
+          </span>
+        </div>
+      </div>
+
+      {/* Right Column: Authentication Card */}
+      <div className="lg:col-span-7 xl:col-span-7 flex items-center justify-center p-6 md:p-12 lg:p-16">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Brand Header */}
+          <div className="lg:hidden flex items-center justify-center gap-2.5 mb-2">
+            <div className="size-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+              <Leaf className="size-5" />
+            </div>
+            <div className="font-heading text-lg font-bold">FitLounge SisEVS</div>
+          </div>
+
+          {/* Form Header */}
+          <div className="space-y-2">
+            <h1 className="text-2xl md:text-3xl font-heading font-bold tracking-tight">
+              {mode === "login" ? "Entrar na sua conta" : "Criar nova conta"}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {mode === "login"
+                ? "Informe suas credenciais para acessar o painel operacional."
+                : "Cadastre-se. A primeira conta registrada terá privilégios de administrador."}
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === "signup" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="nome" className="text-xs font-semibold">Nome completo</Label>
+                <Input
+                  id="nome"
+                  placeholder="Ex: Carlos Silva"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  required
+                  className="h-10 text-sm"
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-semibold">E-mail corporativo</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu.email@empresa.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="h-10 text-sm"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-xs font-semibold">Senha de acesso</Label>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+                className="h-10 text-sm"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-11 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm transition-all"
+              disabled={loading}
+            >
+              {loading ? (
+                "Autenticando..."
+              ) : mode === "login" ? (
+                <>
+                  Entrar no Painel <ArrowRight className="size-4" />
+                </>
+              ) : (
+                <>
+                  Criar Conta e Acessar <ArrowRight className="size-4" />
+                </>
+              )}
+            </Button>
+          </form>
+
+          {/* Switch Mode */}
+          <div className="pt-2 text-center text-sm text-muted-foreground border-t border-border">
+            {mode === "login" ? (
+              <span>
+                Primeira vez no sistema?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("signup")}
+                  className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+                >
+                  Criar conta
+                </button>
+              </span>
+            ) : (
+              <span>
+                Já possui uma conta ativa?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("login")}
+                  className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+                >
+                  Fazer login
+                </button>
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

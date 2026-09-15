@@ -21,7 +21,7 @@ import {
   Banknote,
   Blocks,
   ShieldCheck,
-
+  ChevronRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,22 +44,41 @@ type NavItem = {
   mobilePrimary?: boolean;
 };
 
-const NAV: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, mobilePrimary: true },
-  { to: "/pedidos/novo", label: "Nova comanda", icon: Plus, mobilePrimary: true },
-  { to: "/pedidos", label: "Comandas", icon: Receipt, mobilePrimary: true },
-  { to: "/cozinha", label: "Cozinha", icon: ChefHat, mobilePrimary: true },
-  { to: "/clientes", label: "Clientes", icon: Users },
-  { to: "/produtos", label: "Produtos", icon: Package },
-  { to: "/estoque", label: "Estoque", icon: Boxes },
-  { to: "/composicao", label: "Composição", icon: Blocks, adminOnly: true },
-  { to: "/meu-slim", label: "Meu Slim", icon: Sparkles },
+type NavGroup = {
+  title: string;
+  items: NavItem[];
+};
 
-  { to: "/financeiro", label: "Financeiro", icon: Wallet, financeiroOnly: true },
-  { to: "/caixa", label: "Caixa", icon: Banknote },
-  { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
-  { to: "/auditoria", label: "Auditoria", icon: ShieldCheck, adminOnly: true },
-  { to: "/configuracoes", label: "Configurações", icon: Settings, adminOnly: true },
+const NAV_GROUPS: NavGroup[] = [
+  {
+    title: "Operação",
+    items: [
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, mobilePrimary: true },
+      { to: "/pedidos/novo", label: "Nova Comanda", icon: Plus, mobilePrimary: true },
+      { to: "/pedidos", label: "Comandas", icon: Receipt, mobilePrimary: true },
+      { to: "/cozinha", label: "Cozinha", icon: ChefHat, mobilePrimary: true },
+    ],
+  },
+  {
+    title: "Catálogo & Estoque",
+    items: [
+      { to: "/produtos", label: "Produtos", icon: Package },
+      { to: "/estoque", label: "Estoque", icon: Boxes },
+      { to: "/composicao", label: "Composição", icon: Blocks, adminOnly: true },
+      { to: "/meu-slim", label: "Meu Slim", icon: Sparkles },
+      { to: "/clientes", label: "Clientes", icon: Users },
+    ],
+  },
+  {
+    title: "Gestão & Finanças",
+    items: [
+      { to: "/caixa", label: "Caixa", icon: Banknote },
+      { to: "/financeiro", label: "Financeiro", icon: Wallet, financeiroOnly: true },
+      { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
+      { to: "/auditoria", label: "Auditoria", icon: ShieldCheck, adminOnly: true },
+      { to: "/configuracoes", label: "Configurações", icon: Settings, adminOnly: true },
+    ],
+  },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -69,138 +88,210 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const visibleNav = NAV.filter(
-    (n) => (!n.adminOnly || isAdmin) && (!n.financeiroOnly || podeFinanceiro)
-  );
+  const filterItem = (item: NavItem) =>
+    (!item.adminOnly || isAdmin) && (!item.financeiroOnly || podeFinanceiro);
+
+  const allVisibleItems = NAV_GROUPS.flatMap((g) => g.items).filter(filterItem);
+  const mobilePrimary = allVisibleItems.filter((n) => n.mobilePrimary).slice(0, 4);
+  const moreItems = allVisibleItems.filter((n) => !mobilePrimary.includes(n));
 
   async function handleLogout() {
     await supabase.auth.signOut();
     navigate({ to: "/auth" });
   }
 
-  const mobilePrimary = visibleNav.filter((n) => n.mobilePrimary).slice(0, 4);
-  const moreItems = visibleNav.filter((n) => !mobilePrimary.includes(n));
-
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Sidebar desktop */}
-      <aside className="hidden md:flex w-64 shrink-0 flex-col text-sidebar-foreground border-r border-sidebar-border bg-[linear-gradient(180deg,var(--sidebar)_0%,oklch(0.18_0.03_152)_100%)]">
-        <div className="px-5 py-5 flex items-center gap-3 border-b border-sidebar-border/70">
-          <div className="size-10 rounded-xl bg-gradient-to-br from-gold to-[oklch(0.66_0.13_75)] text-gold-foreground flex items-center justify-center shadow-md shadow-black/20">
+    <div className="min-h-screen flex bg-background text-foreground selection:bg-emerald-500 selection:text-white">
+      {/* Sidebar Desktop */}
+      <aside className="hidden md:flex w-64 shrink-0 flex-col text-sidebar-foreground border-r border-sidebar-border bg-sidebar">
+        {/* Brand Header */}
+        <div className="px-5 h-16 flex items-center gap-3 border-b border-sidebar-border">
+          <div className="size-9 rounded-lg bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white flex items-center justify-center shadow-md shadow-emerald-950/40">
             <Leaf className="size-5" />
           </div>
-          <div className="leading-tight">
-            <div className="font-heading font-bold tracking-tight">FitLounge</div>
-            <div className="text-[11px] uppercase tracking-[0.14em] text-sidebar-foreground/50">Gestão</div>
+          <div className="leading-none">
+            <div className="font-heading font-semibold text-base tracking-tight text-white flex items-center gap-1.5">
+              FitLounge
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                PRO
+              </span>
+            </div>
+            <div className="text-[11px] text-sidebar-foreground/50 mt-1">Gestão de EVS</div>
           </div>
         </div>
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {visibleNav.map((item) => {
-            const active = isActive(pathname, item.to);
-            const Icon = item.icon;
+
+        {/* Navigation Sections */}
+        <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto custom-scrollbar">
+          {NAV_GROUPS.map((group) => {
+            const visibleGroupItems = group.items.filter(filterItem);
+            if (visibleGroupItems.length === 0) return null;
+
             return (
-              <Link
-                key={item.to}
-                to={item.to as any}
-                className={
-                  "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all " +
-                  (active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-inner shadow-black/20 ring-1 ring-gold/30"
-                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:translate-x-0.5")
-                }
-              >
-                <Icon className={"size-4 transition-colors " + (active ? "text-gold" : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground")} />
-                {item.label}
-              </Link>
+              <div key={group.title} className="space-y-1">
+                <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40 mb-1.5">
+                  {group.title}
+                </div>
+                {visibleGroupItems.map((item) => {
+                  const active = isActive(pathname, item.to);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to as any}
+                      className={
+                        "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 " +
+                        (active
+                          ? "bg-sidebar-accent text-white font-semibold shadow-xs"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-white")
+                      }
+                    >
+                      {active && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r bg-emerald-400" />
+                      )}
+                      <Icon
+                        className={
+                          "size-4 shrink-0 transition-colors " +
+                          (active ? "text-emerald-400" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground/80")
+                        }
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
-        <div className="p-3 border-t border-sidebar-border">
+
+        {/* User Profile Footer */}
+        <div className="p-3 border-t border-sidebar-border bg-sidebar/50">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-sidebar-accent/60 text-left">
-                <div className="size-8 rounded-full bg-gold text-gold-foreground flex items-center justify-center text-sm font-semibold">
-                  {(perfil?.nome ?? "U").slice(0, 1).toUpperCase()}
+              <button className="w-full flex items-center gap-3 rounded-lg p-2 hover:bg-sidebar-accent/60 text-left transition-colors group">
+                <div className="relative size-8 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-800 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                  {(perfil?.nome ?? "U").slice(0, 2).toUpperCase()}
+                  <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 border-2 border-sidebar" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{perfil?.nome ?? "Usuário"}</div>
-                  <div className="text-[11px] text-sidebar-foreground/60 capitalize">{perfil?.role}</div>
+                  <div className="text-xs font-semibold text-white truncate">{perfil?.nome ?? "Usuário"}</div>
+                  <div className="text-[11px] text-sidebar-foreground/50 capitalize truncate">
+                    {perfil?.role ?? "Operador"}
+                  </div>
                 </div>
+                <ChevronRight className="size-4 text-sidebar-foreground/30 group-hover:text-sidebar-foreground/60 transition-colors" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>{perfil?.email}</DropdownMenuLabel>
+              <DropdownMenuLabel className="font-normal text-xs text-muted-foreground truncate">
+                {perfil?.email}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="mr-2 size-4" /> Sair
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
+                <LogOut className="mr-2 size-4" /> Sair da conta
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </aside>
 
-      {/* Conteúdo */}
+      {/* Main Content Area */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 h-16 border-b border-border/70 bg-background/75 backdrop-blur-xl flex items-center gap-2 px-4 md:px-6">
+        <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between gap-4 px-4 md:px-8">
           {/* Mobile menu trigger */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
-                <Menu className="size-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0 text-sidebar-foreground border-sidebar-border bg-[linear-gradient(180deg,var(--sidebar)_0%,oklch(0.18_0.03_152)_100%)]">
-              <div className="px-5 py-5 flex items-center gap-3 border-b border-sidebar-border/70">
-                <div className="size-10 rounded-xl bg-gradient-to-br from-gold to-[oklch(0.66_0.13_75)] text-gold-foreground flex items-center justify-center shadow-md shadow-black/20">
-                  <Leaf className="size-5" />
+          <div className="flex items-center gap-3">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="size-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0 text-sidebar-foreground border-sidebar-border bg-sidebar flex flex-col">
+                <div className="px-5 h-16 flex items-center gap-3 border-b border-sidebar-border">
+                  <div className="size-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
+                    <Leaf className="size-5" />
+                  </div>
+                  <div className="font-heading font-semibold text-white text-base">FitLounge</div>
                 </div>
-                <div className="font-heading font-bold tracking-tight">FitLounge</div>
-              </div>
-              <nav className="p-3 space-y-1">
-                {visibleNav.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Link key={item.to} to={item.to as any} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/60">
-                      <Icon className="size-4" /> {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </SheetContent>
-          </Sheet>
+                <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+                  {NAV_GROUPS.map((group) => {
+                    const visibleGroupItems = group.items.filter(filterItem);
+                    if (visibleGroupItems.length === 0) return null;
+                    return (
+                      <div key={group.title} className="space-y-1">
+                        <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/40 mb-1">
+                          {group.title}
+                        </div>
+                        {visibleGroupItems.map((item) => {
+                          const Icon = item.icon;
+                          const active = isActive(pathname, item.to);
+                          return (
+                            <Link
+                              key={item.to}
+                              to={item.to as any}
+                              className={
+                                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium " +
+                                (active ? "bg-sidebar-accent text-white" : "text-sidebar-foreground/75 hover:bg-sidebar-accent/50")
+                              }
+                            >
+                              <Icon className="size-4" /> {item.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </nav>
+              </SheetContent>
+            </Sheet>
 
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="flex-1 flex items-center gap-2 h-10 px-3.5 rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground text-sm border border-border/70 hover:border-border max-w-xl transition-colors"
-          >
-            <Search className="size-4" />
-            <span className="hidden sm:inline">Buscar clientes, pedidos, produtos...</span>
-            <span className="sm:hidden">Buscar...</span>
-            <kbd className="ml-auto hidden md:inline text-[10px] bg-background px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
-          </button>
+            {/* Quick Search */}
+            <button
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2.5 h-9 px-3 rounded-lg bg-secondary hover:bg-muted text-muted-foreground text-xs font-normal border border-border transition-all duration-150 w-64 md:w-80"
+            >
+              <Search className="size-3.5 shrink-0" />
+              <span className="truncate">Buscar comandas, clientes, produtos...</span>
+              <kbd className="ml-auto text-[10px] font-semibold bg-background px-1.5 py-0.5 rounded border border-border shadow-2xs">
+                ⌘K
+              </kbd>
+            </button>
+          </div>
 
-          <QuickActions />
+          <div className="flex items-center gap-3">
+            <QuickActions />
+          </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 max-w-[1440px] w-full mx-auto bg-app-radial">
+        {/* Page Body */}
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 max-w-[1440px] w-full mx-auto">
           {children}
         </main>
 
-        {/* Bottom nav mobile */}
+        {/* Bottom Navigation Mobile */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar text-sidebar-foreground border-t border-sidebar-border">
           <div className="grid grid-cols-5">
             {mobilePrimary.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.to);
               return (
-                <Link key={item.to} to={item.to as any} className={"flex flex-col items-center justify-center py-2.5 text-[11px] gap-0.5 " + (active ? "text-gold" : "text-sidebar-foreground/70")}>
+                <Link
+                  key={item.to}
+                  to={item.to as any}
+                  className={
+                    "flex flex-col items-center justify-center py-2.5 text-[11px] gap-1 " +
+                    (active ? "text-emerald-400 font-semibold" : "text-sidebar-foreground/60")
+                  }
+                >
                   <Icon className="size-5" />
                   <span className="truncate max-w-full px-1">{item.label.split(" ")[0]}</span>
                 </Link>
               );
             })}
-            <button onClick={() => setMoreOpen(true)} className="flex flex-col items-center justify-center py-2.5 text-[11px] gap-0.5 text-sidebar-foreground/70">
+            <button
+              onClick={() => setMoreOpen(true)}
+              className="flex flex-col items-center justify-center py-2.5 text-[11px] gap-1 text-sidebar-foreground/60"
+            >
               <Menu className="size-5" />
               <span>Mais</span>
             </button>
@@ -213,15 +304,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {moreItems.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <Link key={item.to} to={item.to as any} onClick={() => setMoreOpen(false)} className="flex flex-col items-center gap-1 p-3 rounded-xl bg-muted/60 hover:bg-muted">
-                    <Icon className="size-5 text-primary" />
-                    <span className="text-xs text-center">{item.label}</span>
+                  <Link
+                    key={item.to}
+                    to={item.to as any}
+                    onClick={() => setMoreOpen(false)}
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-secondary hover:bg-muted text-foreground transition-colors"
+                  >
+                    <Icon className="size-5 text-emerald-600" />
+                    <span className="text-xs text-center font-medium">{item.label}</span>
                   </Link>
                 );
               })}
-              <button onClick={handleLogout} className="flex flex-col items-center gap-1 p-3 rounded-xl bg-muted/60 hover:bg-muted">
-                <LogOut className="size-5 text-destructive" />
-                <span className="text-xs">Sair</span>
+              <button
+                onClick={handleLogout}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
+              >
+                <LogOut className="size-5" />
+                <span className="text-xs font-medium">Sair</span>
               </button>
             </div>
           </SheetContent>
@@ -243,18 +342,30 @@ function QuickActions() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" className="h-10 px-4 gap-1.5 bg-gradient-to-br from-gold to-[oklch(0.66_0.13_75)] text-gold-foreground hover:brightness-105 shadow-sm shadow-black/10 font-semibold">
+        <Button size="sm" className="h-9 px-3.5 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs">
           <Plus className="size-4" />
-          <span className="hidden sm:inline">Novo</span>
+          <span className="hidden sm:inline">Nova Ação</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel>Ação rápida</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Criar Rápido
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild><Link to="/pedidos/novo">Nova comanda</Link></DropdownMenuItem>
-        <DropdownMenuItem asChild><Link to="/clientes">Clientes</Link></DropdownMenuItem>
-        {podeFinanceiro && <DropdownMenuItem asChild><Link to="/financeiro">Financeiro</Link></DropdownMenuItem>}
-        <DropdownMenuItem asChild><Link to="/estoque">Estoque</Link></DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/pedidos/novo" className="cursor-pointer">Nova comanda</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/clientes" className="cursor-pointer">Novo cliente</Link>
+        </DropdownMenuItem>
+        {podeFinanceiro && (
+          <DropdownMenuItem asChild>
+            <Link to="/financeiro" className="cursor-pointer">Lançamento financeiro</Link>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem asChild>
+          <Link to="/estoque" className="cursor-pointer">Movimentar estoque</Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
