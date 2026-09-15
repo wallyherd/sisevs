@@ -48,6 +48,7 @@ import { ptBR } from "date-fns/locale";
 import { rangeFor, type Periodo } from "@/lib/relatorios";
 
 export const Route = createFileRoute("/_authenticated/")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Dashboard Geral — FitLife SisEVS" }] }),
   component: Dashboard,
 });
