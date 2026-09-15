@@ -42,7 +42,7 @@ function AuthPage() {
         toast.success("Bem-vindo de volta!");
         navigate({ to: "/" });
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -51,7 +51,11 @@ function AuthPage() {
           },
         });
         if (error) throw error;
-        toast.success("Conta criada. Verifique seu e-mail se necessário.");
+        if (!data.session) {
+          const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+          if (loginErr) throw loginErr;
+        }
+        toast.success("Conta criada com sucesso!");
         navigate({ to: "/" });
       }
     } catch (err) {
