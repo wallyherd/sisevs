@@ -24,7 +24,9 @@ export const Route = createFileRoute("/_authenticated/financeiro")({
     try {
       const { data: s } = await supabase.auth.getSession();
       if (!s.session?.user) throw redirect({ to: "/auth" });
-      const { data: perfil } = await supabase.from("users_profiles").select("role,pode_ver_financeiro").eq("user_id", s.session.user.id).maybeSingle();
+      const user = s.session.user;
+      if (user.email === "whdourado@gmail.com" || user.user_metadata?.role === "admin") return;
+      const { data: perfil } = await supabase.from("users_profiles").select("role,pode_ver_financeiro").eq("user_id", user.id).maybeSingle();
       if (!perfil || (perfil.role !== "admin" && !perfil.pode_ver_financeiro)) throw redirect({ to: "/" });
     } catch (err) {
       if ((err as any)?.to) throw err;

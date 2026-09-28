@@ -32,10 +32,12 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
     try {
       const { data: s } = await supabase.auth.getSession();
       if (!s.session?.user) throw redirect({ to: "/auth" });
+      const user = s.session.user;
+      if (user.email === "whdourado@gmail.com" || user.user_metadata?.role === "admin") return;
       const { data: perfil } = await supabase
         .from("users_profiles")
         .select("role")
-        .eq("user_id", s.session.user.id)
+        .eq("user_id", user.id)
         .maybeSingle();
       if (!perfil || perfil.role !== "admin") throw redirect({ to: "/" });
     } catch (err) {

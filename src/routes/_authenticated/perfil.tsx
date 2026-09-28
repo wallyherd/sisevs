@@ -48,8 +48,10 @@ function PerfilPage() {
   const [salvandoSenha, setSalvandoSenha] = useState(false);
 
   useEffect(() => {
-    if (perfil) {
-      setNome(perfil.nome ?? "");
+    if (perfil?.nome) {
+      setNome(perfil.nome);
+    } else if (user?.user_metadata?.nome) {
+      setNome(user.user_metadata.nome);
     }
     if (user?.user_metadata?.avatar_url) {
       setAvatarUrl(user.user_metadata.avatar_url);
@@ -182,13 +184,13 @@ function PerfilPage() {
 
             <div>
               <h2 className="font-heading font-bold text-lg text-foreground truncate">
-                {nome || "Usuário"}
+                {nome || perfil?.nome || (user?.user_metadata?.nome as string) || "Usuário"}
               </h2>
               <p className="text-xs text-muted-foreground truncate">{perfil?.email || user?.email}</p>
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
-              <Badge variant="secondary" className="text-[11px] uppercase font-bold tracking-wider">
+              <Badge variant={isAdmin ? "default" : "secondary"} className={`text-[11px] uppercase font-bold tracking-wider ${isAdmin ? "bg-emerald-600 text-white" : ""}`}>
                 {isAdmin ? "Administrador" : "Funcionário"}
               </Badge>
               {podeFinanceiro && (
@@ -239,7 +241,9 @@ function PerfilPage() {
             </div>
             <div className="flex justify-between py-1">
               <span>Tipo de Acesso:</span>
-              <span className="font-medium text-foreground capitalize">{perfil?.role || "Operador"}</span>
+              <span className="font-semibold text-foreground capitalize">
+                {isAdmin ? "Administrador" : (perfil?.role || "Operador")}
+              </span>
             </div>
             <div className="flex justify-between py-1">
               <span>Status no Sistema:</span>
