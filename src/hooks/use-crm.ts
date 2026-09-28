@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   QuadroCrm,
@@ -158,6 +159,7 @@ const SEED_FLUXOS: Fluxo[] = [
 ];
 
 export function useCrm() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [isUsingLocalFallback, setIsUsingLocalFallback] = useState(false);
 
@@ -250,79 +252,89 @@ export function useCrm() {
         .select("*")
         .limit(1);
 
-      if (erroQuadro || !dbQuadros || dbQuadros.length === 0) {
+      const tabelaInexistente = erroQuadro && (
+        erroQuadro.code === "42P01" ||
+        erroQuadro.message?.toLowerCase().includes("does not exist") ||
+        erroQuadro.message?.toLowerCase().includes("relation")
+      );
+
+      if (tabelaInexistente) {
         setIsUsingLocalFallback(true);
         setLoading(false);
         return;
       }
 
+      // Se a tabela existe no banco, desativa o aviso de fallback local!
       setIsUsingLocalFallback(false);
-      const quadro = dbQuadros[0] as QuadroCrm;
-      setQuadroAtivo(quadro);
 
-      // Carrega colunas
-      const { data: dbCols } = await (supabase as any)
-        .from("crm_colunas")
-        .select("*")
-        .eq("quadro_id", quadro.id)
-        .order("posicao", { ascending: true });
+      if (dbQuadros && dbQuadros.length > 0) {
+        const quadro = dbQuadros[0] as QuadroCrm;
+        setQuadroAtivo(quadro);
 
-      if (dbCols && dbCols.length > 0) {
-        setColunas(dbCols);
-      }
+        // Carrega colunas
+        const { data: dbCols } = await (supabase as any)
+          .from("crm_colunas")
+          .select("*")
+          .eq("quadro_id", quadro.id)
+          .order("posicao", { ascending: true });
 
-      // Carrega cartões
-      const { data: dbCards } = await (supabase as any)
-        .from("crm_cartoes")
-        .select("*")
-        .eq("quadro_id", quadro.id)
-        .is("arquivado_em", null)
-        .order("posicao", { ascending: true });
+        if (dbCols && dbCols.length > 0) {
+          setColunas(dbCols);
+        }
 
-      if (dbCards) {
-        setCartoes(dbCards);
-      }
+        // Carrega cartões
+        const { data: dbCards } = await (supabase as any)
+          .from("crm_cartoes")
+          .select("*")
+          .eq("quadro_id", quadro.id)
+          .is("arquivado_em", null)
+          .order("posicao", { ascending: true });
 
-      // Carrega conexões
-      const { data: dbConexoes } = await (supabase as any)
-        .from("bot_conexoes")
-        .select("*")
-        .is("arquivado_em", null);
+        if (dbCards) {
+          setCartoes(dbCards);
+        }
 
-      if (dbConexoes && dbConexoes.length > 0) {
-        setConexoes(dbConexoes);
-      }
+        // Carrega conexões
+        const { data: dbConexoes } = await (supabase as any)
+          .from("bot_conexoes")
+          .select("*")
+          .is("arquivado_em", null);
 
-      // Carrega conversas
-      const { data: dbConversas } = await (supabase as any)
-        .from("bot_conversas")
-        .select("*, mensagens:bot_mensagens(*)")
-        .order("ultima_mensagem_em", { ascending: false });
+        if (dbConexoes && dbConexoes.length > 0) {
+          setConexoes(dbConexoes);
+        }
 
-      if (dbConversas && dbConversas.length > 0) {
-        setConversas(dbConversas);
-      }
+        // Carrega conversas
+        const { data: dbConversas } = await (supabase as any)
+          .from("bot_conversas")
+          .select("*, mensagens:bot_mensagens(*)")
+          .order("ultima_mensagem_em", { ascending: false });
 
-      // Carrega fluxos
-      const { data: dbFluxos } = await (supabase as any)
-        .from("bot_fluxos")
-        .select("*, passos:bot_passos(*, opcoes:bot_opcoes(*))");
+        if (dbConversas && dbConversas.length > 0) {
+          setConversas(dbConversas);
+        }
 
-      if (dbFluxos && dbFluxos.length > 0) {
-        setFluxos(dbFluxos);
-      }
+        // Carrega fluxos
+        const { data: dbFluxos } = await (supabase as any)
+          .from("bot_fluxos")
+          .select("*, passos:bot_passos(*, opcoes:bot_opcoes(*))");
 
-      // Carrega campanhas
-      const { data: dbCamp } = await (supabase as any)
-        .from("bot_disparos")
-        .select("*")
-        .order("created_at", { ascending: false });
+        if (dbFluxos && dbFluxos.length > 0) {
+          setFluxos(dbFluxos);
+        }
 
-      if (dbCamp) {
-        setCampanhas(dbCamp);
+        // Carrega campanhas
+        const { data: dbCamp } = await (supabase as any)
+          .from("bot_disparos")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (dbCamp) {
+          setCampanhas(dbCamp);
+        }
       }
     } catch {
-      setIsUsingLocalFallback(true);
+      // Ignora falhas transitórias
     } finally {
       setLoading(false);
     }
@@ -330,7 +342,7 @@ export function useCrm() {
 
   useEffect(() => {
     recarregar();
-  }, [recarregar]);
+  }, [recarregar, user]);
 
   // AÇÕES DO CRM
 

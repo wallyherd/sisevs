@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CardapioRouteImport } from './routes/cardapio'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as AuthenticatedAuditoriaRouteImport } from './routes/_authenticated/auditoria'
 import { Route as AuthenticatedCaixaRouteImport } from './routes/_authenticated/caixa'
@@ -25,6 +26,7 @@ import { Route as AuthenticatedMeuSlimRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedPedidosIndexRouteImport } from './routes/_authenticated/pedidos.index'
 import { Route as AuthenticatedPedidosIdRouteImport } from './routes/_authenticated/pedidos.$id'
 import { Route as AuthenticatedPedidosNovoRouteImport } from './routes/_authenticated/pedidos.novo'
@@ -36,6 +38,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CardapioRoute = CardapioRouteImport.update({
+  id: '/cardapio',
+  path: '/cardapio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
@@ -109,6 +116,11 @@ const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({
   path: '/relatorios',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPedidosIndexRoute =
   AuthenticatedPedidosIndexRouteImport.update({
     id: '/pedidos/',
@@ -130,6 +142,7 @@ const AuthenticatedPedidosNovoRoute =
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/cardapio': typeof CardapioRoute
   '/auditoria': typeof AuthenticatedAuditoriaRoute
   '/caixa': typeof AuthenticatedCaixaRoute
   '/clientes': typeof AuthenticatedClientesRoute
@@ -143,12 +156,14 @@ export interface FileRoutesByFullPath {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
   '/pedidos/': typeof AuthenticatedPedidosIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
+  '/cardapio': typeof CardapioRoute
   '/auditoria': typeof AuthenticatedAuditoriaRoute
   '/caixa': typeof AuthenticatedCaixaRoute
   '/clientes': typeof AuthenticatedClientesRoute
@@ -162,6 +177,7 @@ export interface FileRoutesByTo {
   '/perfil': typeof AuthenticatedPerfilRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/': typeof AuthenticatedIndexRoute
   '/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
@@ -171,6 +187,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/cardapio': typeof CardapioRoute
   '/_authenticated/auditoria': typeof AuthenticatedAuditoriaRoute
   '/_authenticated/caixa': typeof AuthenticatedCaixaRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRoute
@@ -184,6 +201,7 @@ export interface FileRoutesById {
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
+  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/_authenticated/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
@@ -194,6 +212,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/cardapio'
     | '/auditoria'
     | '/caixa'
     | '/clientes'
@@ -207,12 +226,14 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/produtos'
     | '/relatorios'
+    | '/usuarios'
     | '/pedidos/$id'
     | '/pedidos/novo'
     | '/pedidos/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/cardapio'
     | '/auditoria'
     | '/caixa'
     | '/clientes'
@@ -226,6 +247,7 @@ export interface FileRouteTypes {
     | '/perfil'
     | '/produtos'
     | '/relatorios'
+    | '/usuarios'
     | '/'
     | '/pedidos/$id'
     | '/pedidos/novo'
@@ -234,6 +256,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/cardapio'
     | '/_authenticated/auditoria'
     | '/_authenticated/caixa'
     | '/_authenticated/clientes'
@@ -247,6 +270,7 @@ export interface FileRouteTypes {
     | '/_authenticated/perfil'
     | '/_authenticated/produtos'
     | '/_authenticated/relatorios'
+    | '/_authenticated/usuarios'
     | '/_authenticated/'
     | '/_authenticated/pedidos/$id'
     | '/_authenticated/pedidos/novo'
@@ -256,6 +280,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  CardapioRoute: typeof CardapioRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +297,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cardapio': {
+      id: '/cardapio'
+      path: '/cardapio'
+      fullPath: '/cardapio'
+      preLoaderRoute: typeof CardapioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/': {
@@ -372,6 +404,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRelatoriosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pedidos/': {
       id: '/_authenticated/pedidos/'
       path: '/pedidos'
@@ -410,6 +449,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedPedidosIdRoute: typeof AuthenticatedPedidosIdRoute
   AuthenticatedPedidosNovoRoute: typeof AuthenticatedPedidosNovoRoute
@@ -430,6 +470,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedPedidosIdRoute: AuthenticatedPedidosIdRoute,
   AuthenticatedPedidosNovoRoute: AuthenticatedPedidosNovoRoute,
@@ -442,6 +483,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  CardapioRoute: CardapioRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

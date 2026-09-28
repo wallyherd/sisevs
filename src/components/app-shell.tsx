@@ -79,6 +79,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/financeiro", label: "Financeiro", icon: Wallet, financeiroOnly: true },
       { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
       { to: "/auditoria", label: "Auditoria", icon: ShieldCheck, adminOnly: true },
+      { to: "/usuarios", label: "Usuários & Equipe", icon: Users, adminOnly: true },
       { to: "/configuracoes", label: "Configurações", icon: Settings, adminOnly: true },
     ],
   },

@@ -7,7 +7,7 @@ export interface PerfilUsuario {
   user_id: string;
   nome: string;
   email: string | null;
-  role: "admin" | "funcionario";
+  role: "admin" | "funcionario" | "cliente";
   pode_ver_financeiro: boolean;
   ativo: boolean;
 }

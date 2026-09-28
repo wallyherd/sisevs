@@ -186,56 +186,56 @@ ALTER TABLE public.bot_opcoes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bot_disparos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bot_disparo_alvos ENABLE ROW LEVEL SECURITY;
 
--- POLICIES: Usuários autenticados podem ler e manipular os dados do CRM
+-- POLICIES: Acesso total para leitura e manipulação das tabelas do CRM
 DO $$ 
 BEGIN
   -- crm_quadros
   DROP POLICY IF EXISTS "crm_quadros_auth_all" ON public.crm_quadros;
-  CREATE POLICY "crm_quadros_auth_all" ON public.crm_quadros FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "crm_quadros_auth_all" ON public.crm_quadros FOR ALL USING (true) WITH CHECK (true);
 
   -- crm_colunas
   DROP POLICY IF EXISTS "crm_colunas_auth_all" ON public.crm_colunas;
-  CREATE POLICY "crm_colunas_auth_all" ON public.crm_colunas FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "crm_colunas_auth_all" ON public.crm_colunas FOR ALL USING (true) WITH CHECK (true);
 
   -- crm_cartoes
   DROP POLICY IF EXISTS "crm_cartoes_auth_all" ON public.crm_cartoes;
-  CREATE POLICY "crm_cartoes_auth_all" ON public.crm_cartoes FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "crm_cartoes_auth_all" ON public.crm_cartoes FOR ALL USING (true) WITH CHECK (true);
 
   -- crm_atividades
   DROP POLICY IF EXISTS "crm_atividades_auth_all" ON public.crm_atividades;
-  CREATE POLICY "crm_atividades_auth_all" ON public.crm_atividades FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "crm_atividades_auth_all" ON public.crm_atividades FOR ALL USING (true) WITH CHECK (true);
 
   -- bot_conexoes
   DROP POLICY IF EXISTS "bot_conexoes_auth_all" ON public.bot_conexoes;
-  CREATE POLICY "bot_conexoes_auth_all" ON public.bot_conexoes FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "bot_conexoes_auth_all" ON public.bot_conexoes FOR ALL USING (true) WITH CHECK (true);
 
   -- bot_conversas
   DROP POLICY IF EXISTS "bot_conversas_auth_all" ON public.bot_conversas;
-  CREATE POLICY "bot_conversas_auth_all" ON public.bot_conversas FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "bot_conversas_auth_all" ON public.bot_conversas FOR ALL USING (true) WITH CHECK (true);
 
   -- bot_mensagens
   DROP POLICY IF EXISTS "bot_mensagens_auth_all" ON public.bot_mensagens;
-  CREATE POLICY "bot_mensagens_auth_all" ON public.bot_mensagens FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "bot_mensagens_auth_all" ON public.bot_mensagens FOR ALL USING (true) WITH CHECK (true);
 
   -- bot_fluxos
   DROP POLICY IF EXISTS "bot_fluxos_auth_all" ON public.bot_fluxos;
-  CREATE POLICY "bot_fluxos_auth_all" ON public.bot_fluxos FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "bot_fluxos_auth_all" ON public.bot_fluxos FOR ALL USING (true) WITH CHECK (true);
 
   -- bot_passos
   DROP POLICY IF EXISTS "bot_passos_auth_all" ON public.bot_passos;
-  CREATE POLICY "bot_passos_auth_all" ON public.bot_passos FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "bot_passos_auth_all" ON public.bot_passos FOR ALL USING (true) WITH CHECK (true);
 
   -- bot_opcoes
   DROP POLICY IF EXISTS "bot_opcoes_auth_all" ON public.bot_opcoes;
-  CREATE POLICY "bot_opcoes_auth_all" ON public.bot_opcoes FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "bot_opcoes_auth_all" ON public.bot_opcoes FOR ALL USING (true) WITH CHECK (true);
 
   -- bot_disparos
   DROP POLICY IF EXISTS "bot_disparos_auth_all" ON public.bot_disparos;
-  CREATE POLICY "bot_disparos_auth_all" ON public.bot_disparos FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "bot_disparos_auth_all" ON public.bot_disparos FOR ALL USING (true) WITH CHECK (true);
 
   -- bot_disparo_alvos
   DROP POLICY IF EXISTS "bot_disparo_alvos_auth_all" ON public.bot_disparo_alvos;
-  CREATE POLICY "bot_disparo_alvos_auth_all" ON public.bot_disparo_alvos FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  CREATE POLICY "bot_disparo_alvos_auth_all" ON public.bot_disparo_alvos FOR ALL USING (true) WITH CHECK (true);
 END $$;
 
 -- FUNIL PADRÃO INICIAL PARA O EVS (Se não existir nenhum)
