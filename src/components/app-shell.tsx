@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   ChevronRight,
   User,
+  MessageSquareText,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -61,12 +62,13 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    title: "Catálogo & Estoque",
+    title: "Catálogo & Clientes",
     items: [
       { to: "/produtos", label: "Produtos", icon: Package },
       { to: "/estoque", label: "Estoque", icon: Boxes },
       { to: "/composicao", label: "Composição", icon: Blocks, adminOnly: true },
       { to: "/meu-slim", label: "Meu Slim", icon: Sparkles },
+      { to: "/crm", label: "CRM & WhatsApp", icon: MessageSquareText },
       { to: "/clientes", label: "Clientes", icon: Users },
     ],
   },
@@ -83,7 +85,7 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { perfil, isAdmin, podeFinanceiro } = useAuth();
+  const { user, perfil, isAdmin, podeFinanceiro } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
