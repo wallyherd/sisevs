@@ -12,8 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { Blocks, Plus, Trash2 } from "lucide-react";
-import { Navigate } from "@tanstack/react-router";
+import { Blocks, Plus, Trash2, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/composicao")({
   head: () => ({ meta: [{ title: "Composição — FitLife" }] }),
@@ -21,8 +20,24 @@ export const Route = createFileRoute("/_authenticated/composicao")({
 });
 
 function ComposicaoPage() {
-  const { isAdmin } = useAuth();
-  if (!isAdmin) return <Navigate to="/" />;
+  const { isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12 text-muted-foreground text-sm">
+        <Loader2 className="size-5 animate-spin mr-2 text-primary" />
+        <span>Carregando composição...</span>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Card className="p-6 text-center text-muted-foreground">
+        Apenas administradores podem visualizar e gerenciar a composição de produtos.
+      </Card>
+    );
+  }
   return (
     <>
       <div className="flex items-center gap-2 mb-4">
