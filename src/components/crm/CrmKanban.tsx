@@ -166,8 +166,8 @@ export function CrmKanban({
         </div>
       </div>
 
-      {/* Grid de Colunas do Funil */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 overflow-x-auto pb-4">
+      {/* Colunas do Funil (Kanban com scroll horizontal) */}
+      <div className="flex gap-4 overflow-x-auto pb-4 pt-1 items-start min-h-[500px]">
         {colunas.map((coluna, colIdx) => {
           const cartoesDaColuna = cartoesFiltrados.filter((c) => c.coluna_id === coluna.id);
           const totalValorColuna = cartoesDaColuna.reduce((acc, cur) => acc + (cur.valor || 0), 0);
@@ -177,7 +177,7 @@ export function CrmKanban({
           return (
             <div
               key={coluna.id}
-              className="flex flex-col bg-muted/40 rounded-xl border border-border/80 p-2.5 min-w-[260px] max-w-full"
+              className="flex flex-col bg-muted/40 rounded-xl border border-border/80 p-3 w-[280px] shrink-0"
             >
               {/* Cabeçalho da Coluna */}
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
