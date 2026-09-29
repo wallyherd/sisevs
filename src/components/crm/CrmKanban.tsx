@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ColunaCrm, CartaoCrm } from "@/types/crm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,32 @@ export function CrmKanban({
   const [colunaSelecionada, setColunaSelecionada] = useState<string>(colunas[0]?.id || "");
   const [modalImportar, setModalImportar] = useState(false);
   const [cartaoDetalhe, setCartaoDetalhe] = useState<CartaoCrm | null>(null);
+
+  // Scroll horizontal suave do funil Kanban
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollKanban = (direction: "left" | "right") => {
+    if (scrollContainerRef.current) {
+      const amount = direction === "left" ? -310 : 310;
+      scrollContainerRef.current.scrollBy({ left: amount, behavior: "smooth" });
+    }
+  };
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      // Se houver rolagem vertical na área das colunas e houver overflow horizontal, converte em scroll lateral
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   // Form states
   const [novoTitulo, setNovoTitulo] = useState("");
@@ -146,6 +172,33 @@ export function CrmKanban({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Navegação Rápida entre Etapas do Funil */}
+          <div className="flex items-center gap-1 bg-secondary/80 p-0.5 rounded-lg border border-border shadow-2xs">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => scrollKanban("left")}
+              className="h-8 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              title="Rolar etapas para a esquerda"
+            >
+              <ChevronLeft className="size-4" />
+              <span className="hidden md:inline">Anterior</span>
+            </Button>
+            <div className="h-4 w-px bg-border/80" />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => scrollKanban("right")}
+              className="h-8 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              title="Rolar etapas para a direita"
+            >
+              <span className="hidden md:inline">Próximo</span>
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+
           <Button
             variant="outline"
             size="sm"
@@ -153,7 +206,8 @@ export function CrmKanban({
             className="text-xs h-9 border-dashed border-emerald-600/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
           >
             <Users className="size-3.5 mr-1 text-emerald-600" />
-            Importar Clientes SisEVS
+            <span className="hidden sm:inline">Importar Clientes SisEVS</span>
+            <span className="sm:hidden">Importar</span>
           </Button>
           <Button
             size="sm"
@@ -167,18 +221,23 @@ export function CrmKanban({
       </div>
 
       {/* Colunas do Funil (Kanban com scroll horizontal) */}
-      <div className="flex gap-4 overflow-x-auto pb-4 pt-1 items-start min-h-[500px]">
-        {colunas.map((coluna, colIdx) => {
-          const cartoesDaColuna = cartoesFiltrados.filter((c) => c.coluna_id === coluna.id);
-          const totalValorColuna = cartoesDaColuna.reduce((acc, cur) => acc + (cur.valor || 0), 0);
-          const proximaColuna = colunas[colIdx + 1];
-          const colunaAnterior = colunas[colIdx - 1];
+      <div 
+        ref={scrollContainerRef}
+        className="w-full max-w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4 pt-1 kanban-scroll-area"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        <div className="flex gap-4 items-start w-max min-w-full pb-2">
+          {colunas.map((coluna, colIdx) => {
+            const cartoesDaColuna = cartoesFiltrados.filter((c) => c.coluna_id === coluna.id);
+            const totalValorColuna = cartoesDaColuna.reduce((acc, cur) => acc + (cur.valor || 0), 0);
+            const proximaColuna = colunas[colIdx + 1];
+            const colunaAnterior = colunas[colIdx - 1];
 
-          return (
-            <div
-              key={coluna.id}
-              className="flex flex-col bg-muted/40 rounded-xl border border-border/80 p-3 w-[280px] shrink-0"
-            >
+            return (
+              <div
+                key={coluna.id}
+                className="flex flex-col bg-muted/40 rounded-xl border border-border/80 p-3 w-[290px] shrink-0"
+              >
               {/* Cabeçalho da Coluna */}
               <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
                 <div className="flex items-center gap-2 min-w-0">
@@ -320,6 +379,7 @@ export function CrmKanban({
             </div>
           );
         })}
+        </div>
       </div>
 
       {/* Modal Novo Lead */}

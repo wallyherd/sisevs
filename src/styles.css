@@ -213,4 +213,35 @@
   .dark .glass-card {
     background: rgba(15, 23, 42, 0.85);
   }
+
+  /* Barra de rolagem visível e estilizada para o Kanban */
+  .kanban-scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: #059669 #e2e8f0;
+  }
+  .kanban-scroll-area::-webkit-scrollbar {
+    height: 12px;
+  }
+  .kanban-scroll-area::-webkit-scrollbar-track {
+    background: #e2e8f0;
+    border-radius: 9999px;
+  }
+  .kanban-scroll-area::-webkit-scrollbar-thumb {
+    background: #059669;
+    border-radius: 9999px;
+    border: 2px solid #e2e8f0;
+  }
+  .kanban-scroll-area::-webkit-scrollbar-thumb:hover {
+    background: #047857;
+  }
+  .dark .kanban-scroll-area {
+    scrollbar-color: #10b981 #1e293b;
+  }
+  .dark .kanban-scroll-area::-webkit-scrollbar-track {
+    background: #1e293b;
+  }
+  .dark .kanban-scroll-area::-webkit-scrollbar-thumb {
+    background: #10b981;
+    border: 2px solid #1e293b;
+  }
 }

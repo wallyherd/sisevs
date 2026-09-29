@@ -61,7 +61,7 @@ function CrmPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full min-w-0">
       {/* Cabeçalho da Página */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
@@ -124,7 +124,7 @@ function CrmPage() {
       )}
 
       {/* Navegação por Abas do CRM */}
-      <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full">
+      <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="w-full min-w-0">
         <TabsList className="bg-muted/70 p-1 rounded-xl h-10 w-full sm:w-auto flex overflow-x-auto justify-start">
           <TabsTrigger value="funil" className="text-xs gap-1.5 data-[state=active]:bg-card font-medium">
             <Kanban className="size-3.5" />
@@ -163,8 +163,8 @@ function CrmPage() {
           </TabsTrigger>
         </TabsList>
 
-        <div className="mt-4">
-          <TabsContent value="funil" className="m-0 focus-visible:outline-hidden">
+        <div className="mt-4 w-full min-w-0">
+          <TabsContent value="funil" className="m-0 w-full min-w-0 focus-visible:outline-hidden">
             <CrmKanban
               colunas={colunas}
               cartoes={cartoes}
