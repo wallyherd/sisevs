@@ -63,16 +63,45 @@ function PerfilPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("A imagem deve ter no máximo 2MB.");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("A imagem deve ter no máximo 5MB.");
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setAvatarUrl(base64);
-      toast.success("Foto selecionada! Clique em 'Salvar Dados' para confirmar.");
+      const img = new Image();
+      img.onload = () => {
+        // Redimensionar para tamanho compacto de avatar (ex: 80x80)
+        // Isso evita que o base64 infle o token JWT no Supabase Auth e cause o erro "Request Header Or Cookie Too Large"
+        const canvas = document.createElement("canvas");
+        const MAX_SIZE = 80;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round((height * MAX_SIZE) / width);
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round((width * MAX_SIZE) / height);
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compactBase64 = canvas.toDataURL("image/jpeg", 0.6);
+          setAvatarUrl(compactBase64);
+          toast.success("Foto selecionada e otimizada! Clique em 'Salvar Dados' para confirmar.");
+        }
+      };
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   }
@@ -92,7 +121,7 @@ function PerfilPage() {
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           nome: nome.trim(),
-          avatar_url: avatarUrl,
+          avatar_url: avatarUrl || null,
         },
       });
       if (authError) throw authError;

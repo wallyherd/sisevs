@@ -25,10 +25,21 @@ export function useAuth() {
       try {
         const { data } = await supabase.auth.getSession();
         if (!mounted) return;
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
-        if (data.session?.user) {
-          await loadPerfil(data.session.user);
+
+        let activeSession = data.session;
+        // Se o token JWT estiver inflado (> 8KB), força o refresh da sessão para obter o token limpo
+        if (activeSession?.access_token && activeSession.access_token.length > 8000) {
+          console.warn("[useAuth] Token JWT excessivamente grande detectado (>8KB). Renovando sessão...");
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          if (refreshed?.session) {
+            activeSession = refreshed.session;
+          }
+        }
+
+        setSession(activeSession);
+        setUser(activeSession?.user ?? null);
+        if (activeSession?.user) {
+          await loadPerfil(activeSession.user);
         }
       } catch (err) {
         console.error("[useAuth] Erro ao obter sessão:", err);
