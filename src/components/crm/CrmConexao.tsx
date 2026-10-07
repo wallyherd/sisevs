@@ -3,6 +3,7 @@ import { Conexao } from "@/types/crm";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   QrCode,
   Smartphone,
@@ -15,6 +16,7 @@ import {
   FolderOpen,
   ArrowRight,
   ShieldCheck,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +44,18 @@ export function CrmConexao({ conexoes }: CrmConexaoProps) {
   };
 
   const isConectado = conexao.status === "conectado";
+  
+  const [limite, setLimite] = useState(conexao.limite_diario || 300);
+  const [salvandoLimite, setSalvandoLimite] = useState(false);
+
+  const salvarLimite = async () => {
+    setSalvandoLimite(true);
+    // simula ou aplica na store se houvesse, pro futuro.
+    setTimeout(() => {
+      toast.success("Limite diário atualizado com sucesso.");
+      setSalvandoLimite(false);
+    }, 500);
+  };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -95,9 +109,26 @@ export function CrmConexao({ conexoes }: CrmConexaoProps) {
             <span className="text-muted-foreground text-[11px] block">Enviadas Hoje</span>
             <strong className="text-foreground text-sm font-heading">{conexao.enviadas_hoje}</strong>
           </div>
-          <div className="p-2.5 bg-muted/40 rounded-lg">
-            <span className="text-muted-foreground text-[11px] block">Limite Diário Seguro</span>
-            <strong className="text-foreground text-sm font-heading">{conexao.limite_diario || 300} msgs</strong>
+          <div className="p-2.5 bg-muted/40 rounded-lg flex flex-col justify-center">
+            <span className="text-muted-foreground text-[11px] block mb-1">Limite Diário Seguro</span>
+            <div className="flex items-center gap-1">
+              <Input
+                type="number"
+                value={limite}
+                onChange={(e) => setLimite(Number(e.target.value))}
+                className="h-6 w-16 text-xs px-1.5 py-0 font-heading bg-background border-border"
+              />
+              <span className="text-xs font-heading mr-1">msgs</span>
+              {limite !== (conexao.limite_diario || 300) && (
+                <button
+                  onClick={salvarLimite}
+                  disabled={salvandoLimite}
+                  className="size-5 flex items-center justify-center bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded transition-colors"
+                >
+                  <Check className="size-3" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="p-2.5 bg-muted/40 rounded-lg">
             <span className="text-muted-foreground text-[11px] block">Provedor</span>

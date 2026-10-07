@@ -38,6 +38,7 @@ function CaixaPage() {
   const [fecharOpen, setFecharOpen] = useState(false);
   const [sangriaOpen, setSangriaOpen] = useState(false);
   const [reforcoOpen, setReforcoOpen] = useState(false);
+  const [saidasPeriodo, setSaidasPeriodo] = useState<"dia" | "semana" | "mes">("dia");
 
   const { data: atual } = useQuery({
     queryKey: ["caixa-atual"],
@@ -64,6 +65,27 @@ function CaixaPage() {
     queryFn: async () => {
       const { data } = await supabase.from("caixa_movimentacoes")
         .select("*").eq("caixa_id", atual!.id)
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const { data: historicoSaidas = [] } = useQuery({
+    queryKey: ["caixa-saidas", saidasPeriodo],
+    queryFn: async () => {
+      let fromDate = new Date();
+      if (saidasPeriodo === "dia") {
+        fromDate.setHours(0, 0, 0, 0);
+      } else if (saidasPeriodo === "semana") {
+        fromDate.setDate(fromDate.getDate() - 7);
+      } else {
+        fromDate.setMonth(fromDate.getMonth() - 1);
+      }
+      
+      const { data } = await supabase.from("caixa_movimentacoes")
+        .select("*, caixas!inner(aberto_em)")
+        .in("tipo", ["sangria", "saida"])
+        .gte("created_at", fromDate.toISOString())
         .order("created_at", { ascending: false });
       return data ?? [];
     },
@@ -105,7 +127,7 @@ function CaixaPage() {
                 <PlusCircle className="size-4 mr-1" /> Reforço
               </Button>
               <Button variant="outline" onClick={() => setSangriaOpen(true)}>
-                <MinusCircle className="size-4 mr-1" /> Sangria
+                <MinusCircle className="size-4 mr-1" /> Retirada / Pagamento
               </Button>
               {podeFinanceiro && (
                 <Button onClick={() => setFecharOpen(true)} className="bg-primary text-primary-foreground">
@@ -120,7 +142,8 @@ function CaixaPage() {
       <Tabs defaultValue="atual" className="space-y-4">
         <TabsList>
           <TabsTrigger value="atual">Caixa atual</TabsTrigger>
-          <TabsTrigger value="historico">Histórico</TabsTrigger>
+          <TabsTrigger value="saidas">Retiradas / Pagamentos</TabsTrigger>
+          <TabsTrigger value="historico">Histórico (Dias)</TabsTrigger>
         </TabsList>
 
         <TabsContent value="atual" className="space-y-4">
@@ -133,10 +156,10 @@ function CaixaPage() {
           {atual && (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Kpi label="Valor inicial" value={brl(atual.valor_inicial)} />
+                <Kpi label="Troco inicial" value={brl(atual.valor_inicial)} />
                 <Kpi label="Entradas em dinheiro" value={brl(atual.total_dinheiro)} icon={<ArrowUpRight className="size-4 text-green-600" />} />
                 <Kpi label="Reforços" value={brl(atual.total_reforcos)} icon={<PlusCircle className="size-4 text-emerald-600" />} />
-                <Kpi label="Sangrias" value={brl(atual.total_sangrias)} icon={<MinusCircle className="size-4 text-orange-600" />} />
+                <Kpi label="Retiradas/Pag." value={brl(atual.total_sangrias)} icon={<MinusCircle className="size-4 text-orange-600" />} />
                 <Kpi label="Pix" value={brl(atual.total_pix)} />
                 <Kpi label="Débito" value={brl(atual.total_debito)} />
                 <Kpi label="Crédito" value={brl(atual.total_credito)} />
@@ -171,6 +194,35 @@ function CaixaPage() {
               </Card>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="saidas" className="space-y-4">
+          <div className="flex gap-2 mb-2">
+            <Button variant={saidasPeriodo === "dia" ? "default" : "outline"} size="sm" onClick={() => setSaidasPeriodo("dia")}>Hoje</Button>
+            <Button variant={saidasPeriodo === "semana" ? "default" : "outline"} size="sm" onClick={() => setSaidasPeriodo("semana")}>Últimos 7 dias</Button>
+            <Button variant={saidasPeriodo === "mes" ? "default" : "outline"} size="sm" onClick={() => setSaidasPeriodo("mes")}>Últimos 30 dias</Button>
+          </div>
+          <Card className="p-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs uppercase text-muted-foreground border-b border-border">
+                  <tr><th className="text-left py-2">Data/Hora</th><th className="text-left">Descrição / Justificativa</th><th className="text-right">Valor</th></tr>
+                </thead>
+                <tbody>
+                  {historicoSaidas.map((m: any) => (
+                    <tr key={m.id} className="border-b border-border">
+                      <td className="py-2">{new Date(m.created_at).toLocaleString("pt-BR")}</td>
+                      <td className="text-muted-foreground font-medium">{m.descricao ?? "Sem justificativa"}</td>
+                      <td className="text-right font-semibold text-red-600">
+                        − {brl(m.valor)}
+                      </td>
+                    </tr>
+                  ))}
+                  {historicoSaidas.length === 0 && <tr><td colSpan={3} className="text-center py-8 text-muted-foreground">Nenhuma retirada no período.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="historico" className="space-y-2">
@@ -249,7 +301,7 @@ function AbrirCaixaDialog({ onClose, onDone }: { onClose: () => void; onDone: ()
           <DialogDescription>Informe o valor em dinheiro presente no caixa neste momento.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div><Label>Valor inicial em dinheiro</Label><Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} /></div>
+          <div><Label>Troco inicial no caixa (Dinheiro)</Label><Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} /></div>
           <div><Label>Observações</Label><Textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} /></div>
         </div>
         <DialogFooter>
@@ -328,16 +380,16 @@ function SangriaDialog({ tipo, onClose, onDone }: { tipo: "sangria" | "reforco";
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{tipo === "sangria" ? "Sangria de caixa" : "Reforço de caixa"}</DialogTitle>
+          <DialogTitle>{tipo === "sangria" ? "Retirada / Pagamento" : "Reforço de caixa"}</DialogTitle>
           <DialogDescription>
             {tipo === "sangria"
-              ? "Retirada de dinheiro do caixa (ex.: pagar fornecedor à vista)."
+              ? "Informar saída de dinheiro para pagar fornecedores ou despesas."
               : "Entrada manual de dinheiro no caixa (ex.: trocado para pagar troco)."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div><Label>Valor</Label><Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} /></div>
-          <div><Label>Motivo</Label><Input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex.: troco, fornecedor X" /></div>
+          <div><Label>Valor R$</Label><Input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} /></div>
+          <div><Label>{tipo === "sangria" ? "Justificativa (Para quê?)" : "Motivo"}</Label><Input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder={tipo === "sangria" ? "Ex.: Pagar fornecedor de água" : "Ex.: troco"} /></div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>

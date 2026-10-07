@@ -25,6 +25,9 @@ type ItemCozinha = {
   observacoes_cozinha: string | null;
   status_preparo: string;
   enviado_cozinha_em: string | null;
+  preparo_iniciado_em: string | null;
+  pronto_em: string | null;
+  entregue_em: string | null;
   rodada: number;
   pedido: {
     numero: number;
@@ -48,7 +51,7 @@ function CozinhaPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("pedido_itens")
-        .select("id,pedido_id,nome_produto,quantidade,sabor,adicionais,observacoes,observacoes_cozinha,status_preparo,enviado_cozinha_em,rodada,pedido:pedidos!inner(numero,status_comanda,cliente_nome_rapido,cliente:clientes(nome,telefone))")
+        .select("id,pedido_id,nome_produto,quantidade,sabor,adicionais,observacoes,observacoes_cozinha,status_preparo,enviado_cozinha_em,preparo_iniciado_em,pronto_em,entregue_em,rodada,pedido:pedidos!inner(numero,status_comanda,cliente_nome_rapido,cliente:clientes(nome,telefone))")
         .eq("envia_para_cozinha", true)
         .in("status_preparo", ["novo", "em_preparo", "pronto"])
         .order("enviado_cozinha_em", { ascending: true, nullsFirst: true });
@@ -121,10 +124,15 @@ function CozinhaPage() {
                         <div className="text-base font-bold">#{it.pedido.numero} <span className="text-xs font-normal text-muted-foreground">· Rod. {it.rodada}</span></div>
                         <Badge variant="outline" className={PREPARO_COLOR[it.status_preparo]}>{PREPARO_LABEL[it.status_preparo]}</Badge>
                       </div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
-                        <Clock className="size-3" />
-                        {enviado ? enviado.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
-                        {urgente && <span className="ml-1 text-destructive font-semibold">há {Math.round(idadeMin)}min</span>}
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Clock className="size-3" />
+                          {enviado ? enviado.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                        </span>
+                        {urgente && <span className="text-destructive font-semibold">há {Math.round(idadeMin)}min</span>}
+                        {(it.preparo_iniciado_em || it.pronto_em) && (
+                          <CozinhaTimer start={it.preparo_iniciado_em} end={it.pronto_em} />
+                        )}
                       </div>
                       <div className="text-sm font-medium mb-1.5">{nome}</div>
                       <div className="border-y border-border py-1.5 mb-2 text-sm">
@@ -155,5 +163,32 @@ function CozinhaPage() {
         })}
       </div>
     </>
+  );
+}
+
+function CozinhaTimer({ start, end }: { start: string | null, end: string | null }) {
+  const [now, setNow] = useState(Date.now());
+  
+  useEffect(() => {
+    if (!start || end) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [start, end]);
+
+  if (!start) return null;
+
+  const startTime = new Date(start).getTime();
+  const endTime = end ? new Date(end).getTime() : now;
+  const diff = Math.max(0, Math.floor((endTime - startTime) / 1000));
+  
+  const m = Math.floor(diff / 60);
+  const s = diff % 60;
+  const formatted = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  
+  return (
+    <span className="flex items-center gap-1 font-mono bg-secondary/80 border px-1.5 py-0.5 rounded text-[11px] font-medium text-foreground">
+      <Flame className="size-3 text-orange-500" />
+      {formatted} {end && <span className="text-[9px] uppercase tracking-wider font-sans text-emerald-600 font-bold ml-0.5">Finalizado</span>}
+    </span>
   );
 }

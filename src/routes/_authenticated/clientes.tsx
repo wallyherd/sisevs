@@ -177,6 +177,27 @@ function ClienteDetalhe({ cliente, onClose }: { cliente: Cliente; onClose: () =>
     },
   });
 
+  const { data: produtosComprados = [] } = useQuery({
+    queryKey: ["cliente-produtos", cliente.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pedido_itens")
+        .select("nome_produto, quantidade, pedido:pedidos!inner(cliente_id, status_comanda)")
+        .eq("pedido.cliente_id", cliente.id)
+        .neq("status_preparo", "cancelado")
+        .neq("pedido.status_comanda", "cancelada");
+      
+      const contagem = (data ?? []).reduce((acc: Record<string, number>, curr: any) => {
+        acc[curr.nome_produto] = (acc[curr.nome_produto] || 0) + curr.quantidade;
+        return acc;
+      }, {});
+      
+      return Object.entries(contagem)
+        .map(([nome, qtd]) => ({ nome, qtd }))
+        .sort((a, b) => b.qtd - a.qtd);
+    },
+  });
+
   const pagas = pedidos.filter((p: any) => p.status_pagamento === "pago");
   const total = pagas.reduce((s, p: any) => s + Number(p.total), 0);
   const pendente = pedidos.filter((p: any) => p.status_pagamento === "pendente").reduce((s, p: any) => s + Number(p.total), 0);
@@ -213,6 +234,20 @@ function ClienteDetalhe({ cliente, onClose }: { cliente: Cliente; onClose: () =>
               {pedidos.length === 0 && <li className="text-muted-foreground text-sm py-3">Sem pedidos.</li>}
             </ul>
           </div>
+
+          {produtosComprados.length > 0 && (
+            <div>
+              <div className="text-sm font-semibold mb-2">Produtos Favoritos</div>
+              <ul className="divide-y divide-border text-sm max-h-48 overflow-y-auto border border-border rounded-lg bg-muted/20">
+                {produtosComprados.map((p, i) => (
+                  <li key={i} className="py-2 px-3 flex items-center justify-between">
+                    <span>{p.nome}</span>
+                    <Badge variant="secondary">{p.qtd}x</Badge>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {indicados.length > 0 && (
             <CardContent className="p-0">

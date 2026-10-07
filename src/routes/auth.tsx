@@ -29,14 +29,13 @@ function AuthPage() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [nome, setNome] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const parsed = mode === "login"
       ? loginSchema.safeParse({ email, password })
-      : signupSchema.safeParse({ email, password, nome });
+      : loginSchema.safeParse({ email, password }); // signup no longer needs 'nome'
     if (!parsed.success) { toast.error(formatZodError(parsed.error)); return; }
     setLoading(true);
     try {
@@ -46,20 +45,45 @@ function AuthPage() {
         toast.success("Bem-vindo de volta!");
         navigate({ to: "/" });
       } else {
+        const { data: invite, error: inviteErr } = await supabase
+          .from("user_invites")
+          .select("*")
+          .eq("email", email.trim().toLowerCase())
+          .single();
+
+        if (inviteErr || !invite) {
+          toast.error("Este e-mail não foi cadastrado por um administrador ou não foi encontrado.");
+          setLoading(false);
+          return;
+        }
+        if (invite.utilizado) {
+          toast.error("Este acesso já foi configurado. Faça login normalmente.");
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
-            data: { nome },
+            data: { nome: invite.nome },
           },
         });
         if (error) throw error;
+        
+        if (data.user) {
+          // Atualiza o perfil com a role do convite
+          await supabase.from("users_profiles").update({ role: invite.role }).eq("user_id", data.user.id);
+          // Marca o convite como utilizado
+          await supabase.from("user_invites").update({ utilizado: true }).eq("id", invite.id);
+        }
+
         if (!data.session) {
           const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
           if (loginErr) throw loginErr;
         }
-        toast.success("Conta criada com sucesso!");
+        toast.success("Acesso configurado com sucesso!");
         navigate({ to: "/" });
       }
     } catch (err) {
@@ -146,30 +170,17 @@ function AuthPage() {
           {/* Form Header */}
           <div className="space-y-2">
             <h1 className="text-2xl md:text-3xl font-heading font-bold tracking-tight">
-              {mode === "login" ? "Entrar na sua conta" : "Criar nova conta"}
+              {mode === "login" ? "Entrar na sua conta" : "Primeiro Acesso"}
             </h1>
             <p className="text-sm text-muted-foreground">
               {mode === "login"
                 ? "Informe suas credenciais para acessar o painel operacional."
-                : "Cadastre-se. A primeira conta registrada terá privilégios de administrador."}
+                : "Defina sua senha. O seu e-mail já deve ter sido cadastrado pelo administrador."}
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="nome" className="text-xs font-semibold">Nome completo</Label>
-                <Input
-                  id="nome"
-                  placeholder="Ex: Carlos Silva"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  required
-                  className="h-10 text-sm"
-                />
-              </div>
-            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs font-semibold">E-mail corporativo</Label>
@@ -215,7 +226,7 @@ function AuthPage() {
                 </>
               ) : (
                 <>
-                  Criar Conta e Acessar <ArrowRight className="size-4" />
+                  Configurar Acesso <ArrowRight className="size-4" />
                 </>
               )}
             </Button>
@@ -225,13 +236,13 @@ function AuthPage() {
           <div className="pt-2 text-center text-sm text-muted-foreground border-t border-border">
             {mode === "login" ? (
               <span>
-                Primeira vez no sistema?{" "}
+                Seu administrador já cadastrou você?{" "}
                 <button
                   type="button"
                   onClick={() => setMode("signup")}
                   className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
                 >
-                  Criar conta
+                  Configurar primeiro acesso
                 </button>
               </span>
             ) : (

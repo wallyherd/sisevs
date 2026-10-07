@@ -62,6 +62,13 @@ function UsuariosPage() {
     usuario: PerfilUsuario;
   } | null>(null);
 
+  // Modal para convidar usuário
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteNome, setInviteNome] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "funcionario">("funcionario");
+  const [isInviting, setIsInviting] = useState(false);
+
   const { data: usuarios = [], isLoading, refetch } = useQuery({
     queryKey: ["users-profiles-admin"],
     queryFn: async () => {
@@ -129,6 +136,36 @@ function UsuariosPage() {
     setConfirmModal(null);
   }
 
+  async function handleInviteUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteEmail || !inviteNome) return;
+    setIsInviting(true);
+    
+    // Inserir na tabela user_invites
+    const { error } = await supabase.from("user_invites").insert({
+      email: inviteEmail.trim().toLowerCase(),
+      nome: inviteNome.trim(),
+      role: inviteRole,
+      created_by: currentUser?.id,
+    });
+    
+    setIsInviting(false);
+    
+    if (error) {
+      if (error.code === '23505') {
+        toast.error("Já existe um convite ou usuário com este e-mail.");
+      } else {
+        toast.error("Erro ao gerar convite: " + error.message);
+      }
+    } else {
+      toast.success("Usuário cadastrado com sucesso! Ele já pode acessar o sistema usando este e-mail para criar a senha.");
+      setInviteModalOpen(false);
+      setInviteEmail("");
+      setInviteNome("");
+      setInviteRole("funcionario");
+    }
+  }
+
   // Estatísticas
   const totalUsuarios = usuarios.length;
   const totalAdmins = usuarios.filter((u) => u.role === "admin").length;
@@ -169,7 +206,7 @@ function UsuariosPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
@@ -178,7 +215,15 @@ function UsuariosPage() {
             disabled={isLoading}
           >
             <RefreshCw className={`size-3.5 ${isLoading ? "animate-spin" : ""}`} />
-            <span>Atualizar Lista</span>
+            <span className="hidden sm:inline">Atualizar Lista</span>
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setInviteModalOpen(true)}
+            className="text-xs h-9 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <UserCheck className="size-3.5" />
+            <span>Cadastrar Novo Membro</span>
           </Button>
         </div>
       </div>
@@ -499,6 +544,64 @@ function UsuariosPage() {
           </DialogContent>
         </Dialog>
       )}
+      {/* Modal de Convite (Cadastro Inicial) */}
+      <Dialog open={inviteModalOpen} onOpenChange={setInviteModalOpen}>
+        <DialogContent className="max-w-md">
+          <form onSubmit={handleInviteUser}>
+            <DialogHeader>
+              <DialogTitle>Cadastrar Novo Membro</DialogTitle>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Adicione um novo membro informando o <strong>e-mail</strong> e <strong>nome</strong>. O sistema irá gerar um acesso e no primeiro login, o próprio funcionário definirá sua senha pessoal.
+              </p>
+              
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold">Nome Completo</label>
+                <Input
+                  value={inviteNome}
+                  onChange={(e) => setInviteNome(e.target.value)}
+                  placeholder="Ex: João da Silva"
+                  required
+                  className="text-sm h-10"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold">E-mail Corporativo</label>
+                <Input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="email@exemplo.com"
+                  required
+                  className="text-sm h-10"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold">Cargo de Acesso</label>
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as "admin" | "funcionario")}
+                  className="w-full flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="funcionario">Funcionário (Acesso restrito)</option>
+                  <option value="admin">Administrador (Acesso total)</option>
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" size="sm" onClick={() => setInviteModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" size="sm" disabled={isInviting}>
+                {isInviting ? "Cadastrando..." : "Cadastrar Membro"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

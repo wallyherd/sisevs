@@ -56,7 +56,6 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Operação",
     items: [
       { to: "/", label: "Dashboard", icon: LayoutDashboard, mobilePrimary: true },
-      { to: "/pedidos/novo", label: "Nova Comanda", icon: Plus, mobilePrimary: true },
       { to: "/pedidos", label: "Comandas", icon: Receipt, mobilePrimary: true },
       { to: "/cozinha", label: "Cozinha", icon: ChefHat, mobilePrimary: true },
     ],
@@ -67,7 +66,6 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/produtos", label: "Produtos", icon: Package },
       { to: "/estoque", label: "Estoque", icon: Boxes },
       { to: "/composicao", label: "Composição", icon: Blocks, adminOnly: true },
-      { to: "/meu-slim", label: "Meu Slim", icon: Sparkles },
       { to: "/crm", label: "CRM & WhatsApp", icon: MessageSquareText },
       { to: "/clientes", label: "Clientes", icon: Users },
     ],
@@ -92,10 +90,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const filterItem = (item: NavItem) =>
-    (!item.adminOnly || isAdmin) && (!item.financeiroOnly || podeFinanceiro);
+  const filterItem = (item: NavItem) => {
+    if (!perfil) return false;
+    const role = perfil.role;
+    
+    if (role === "admin") return true;
+    if (role === "gerente") return !item.adminOnly;
+    
+    if (role === "cozinha") {
+      return item.to === "/cozinha";
+    }
+    
+    if (role === "caixa") {
+      return ["/caixa", "/financeiro", "/relatorios"].includes(item.to);
+    }
+    
+    // Funcionario (default fallback)
+    if (item.adminOnly) return false;
+    if (item.financeiroOnly) return false;
+    const gestaoRoutes = ["/caixa", "/financeiro", "/relatorios", "/auditoria", "/usuarios", "/configuracoes"];
+    if (gestaoRoutes.includes(item.to)) return false;
+    
+    return true;
+  };
 
-  const allVisibleItems = NAV_GROUPS.flatMap((g) => g.items).filter(filterItem);
+  // Filtragem dos grupos para esconder grupos vazios
+  const visibleGroups = NAV_GROUPS.map(g => ({
+    ...g,
+    items: g.items.filter(filterItem)
+  })).filter(g => g.items.length > 0);
+
+  const allVisibleItems = visibleGroups.flatMap((g) => g.items);
   const mobilePrimary = allVisibleItems.filter((n) => n.mobilePrimary).slice(0, 4);
   const moreItems = allVisibleItems.filter((n) => !mobilePrimary.includes(n));
 
@@ -274,10 +299,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </kbd>
             </button>
           </div>
-
-          <div className="flex items-center gap-3">
-            <QuickActions />
-          </div>
         </header>
 
         {/* Page Body */}
@@ -352,6 +373,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Sheet>
 
         <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
+        {/* Quick Actions FAB */}
+        <div className="fixed bottom-20 right-4 md:bottom-8 md:right-8 z-50">
+          <QuickActions />
+        </div>
       </div>
     </div>
   );
@@ -364,12 +390,17 @@ function isActive(pathname: string, to: string) {
 
 function QuickActions() {
   const { podeFinanceiro } = useAuth();
+  
+  const handleCopyCardapio = () => {
+    const url = `${window.location.origin}/cardapio`;
+    navigator.clipboard.writeText(url);
+    toast.success("Link do cardápio copiado!");
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" className="h-9 px-3.5 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs">
-          <Plus className="size-4" />
-          <span className="hidden sm:inline">Nova Ação</span>
+        <Button size="icon" className="size-14 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/30">
+          <Plus className="size-6" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
@@ -390,6 +421,18 @@ function QuickActions() {
         )}
         <DropdownMenuItem asChild>
           <Link to="/estoque" className="cursor-pointer">Movimentar estoque</Link>
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Cardápio Digital
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <a href="/cardapio" target="_blank" className="cursor-pointer">Visualizar cardápio</a>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleCopyCardapio} className="cursor-pointer">
+          Copiar link para enviar
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

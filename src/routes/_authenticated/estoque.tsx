@@ -124,7 +124,7 @@ function EstoquePage() {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas</SelectItem>
-              {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              {Array.from(new Set([...CATEGORIAS, ...itens.map(i => i.categoria).filter(Boolean)])).map(c => <SelectItem key={c as string} value={c as string}>{c as string}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -193,6 +193,7 @@ function ItemForm({ item, onClose, onMovimentar }: { item: Item | null; onClose:
   const isNew = !item;
   const [f, setF] = useState({
     nome: item?.nome ?? "", categoria: item?.categoria ?? "Insumos Herbalife",
+    novaCategoria: "", // Campo para nova categoria
     quantidade_inicial: 0, unidade_medida: item?.unidade_medida ?? "unidade",
     estoque_minimo: item?.estoque_minimo ?? 0, custo_unitario: item?.custo_unitario ?? 0,
     fornecedor: item?.fornecedor ?? "", validade: item?.validade ?? "", ativo: item?.ativo ?? true,
@@ -203,10 +204,12 @@ function ItemForm({ item, onClose, onMovimentar }: { item: Item | null; onClose:
     if (!f.nome.trim()) { toast.error("Nome obrigatório"); return; }
     setSaving(true);
 
+    const categoriaFinal = f.categoria === "outra" && f.novaCategoria.trim() ? f.novaCategoria.trim() : (f.categoria === "outra" ? "Outros" : f.categoria);
+
     if (item) {
       // edição: NÃO atualiza quantidade
       const payload = {
-        nome: f.nome, categoria: f.categoria, unidade_medida: f.unidade_medida,
+        nome: f.nome, categoria: categoriaFinal, unidade_medida: f.unidade_medida,
         estoque_minimo: f.estoque_minimo, custo_unitario: f.custo_unitario,
         fornecedor: f.fornecedor || null, validade: f.validade || null, ativo: f.ativo,
       };
@@ -219,7 +222,7 @@ function ItemForm({ item, onClose, onMovimentar }: { item: Item | null; onClose:
 
     // novo item: cria com quantidade 0 e registra entrada inicial via RPC
     const { data: created, error: e1 } = await supabase.from("estoque_itens").insert({
-      nome: f.nome, categoria: f.categoria, unidade_medida: f.unidade_medida,
+      nome: f.nome, categoria: categoriaFinal, unidade_medida: f.unidade_medida,
       estoque_minimo: f.estoque_minimo, custo_unitario: f.custo_unitario,
       fornecedor: f.fornecedor || null, validade: f.validade || null, ativo: f.ativo,
       quantidade_atual: 0,
@@ -244,10 +247,22 @@ function ItemForm({ item, onClose, onMovimentar }: { item: Item | null; onClose:
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="sm:col-span-2"><Label>Nome *</Label><Input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} /></div>
           <div><Label>Categoria</Label>
-            <Select value={f.categoria} onValueChange={v => setF({ ...f, categoria: v })}>
+            <Select value={f.categoria} onValueChange={v => setF({ ...f, categoria: v, novaCategoria: "" })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+              <SelectContent>
+                {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                <SelectItem value="outra">+ Nova Categoria...</SelectItem>
+              </SelectContent>
             </Select>
+            {f.categoria === "outra" && (
+              <Input
+                className="mt-2"
+                placeholder="Nome da categoria"
+                value={f.novaCategoria}
+                onChange={e => setF({ ...f, novaCategoria: e.target.value })}
+                autoFocus
+              />
+            )}
           </div>
           <div><Label>Unidade</Label>
             <Select value={f.unidade_medida} onValueChange={v => setF({ ...f, unidade_medida: v })}>
