@@ -24,7 +24,10 @@ import {
   ChevronRight,
   User,
   MessageSquareText,
+  Copy,
+  Smartphone,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -298,6 +301,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 ⌘K
               </kbd>
             </button>
+          </div>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <div className="hidden md:flex items-center gap-1">
+                <Button variant="outline" size="sm" asChild className="h-9">
+                  <a href="/cardapio" target="_blank" rel="noopener noreferrer">
+                    <Smartphone className="size-4 mr-2" />
+                    Cardápio
+                  </a>
+                </Button>
+                <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => {
+                  navigator.clipboard.writeText(window.location.origin + '/cardapio');
+                  toast.success('Link do cardápio copiado!');
+                }} title="Copiar link do cardápio genérico">
+                  <Copy className="size-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </header>
 

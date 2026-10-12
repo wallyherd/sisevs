@@ -26,6 +26,7 @@ import {
   LogIn,
   LogOut,
   User,
+  Users,
   CheckCircle2,
   ChefHat,
   Receipt,
@@ -44,6 +45,8 @@ import {
   GrupoOpcoes,
 } from "@/data/cardapio-data";
 
+import { z } from "zod";
+
 export const Route = createFileRoute("/cardapio")({
   head: () => ({
     meta: [
@@ -51,6 +54,7 @@ export const Route = createFileRoute("/cardapio")({
       { name: "description", content: ESTABELECIMENTO.descricao },
     ],
   }),
+  validateSearch: (search) => z.object({ mesa: z.string().optional() }).parse(search),
   component: CardapioDigitalPage,
 });
 
@@ -107,15 +111,26 @@ function CardapioDigitalPage() {
   const [opcoesPorGrupo, setOpcoesPorGrupo] = useState<Record<number, number[]>>({});
   const [qtdModal, setQtdModal] = useState<number>(1);
   const [obsModal, setObsModal] = useState<string>("");
-
   // Estados do Cliente & Pedido
-  const [tipoEntrega, setTipoEntrega] = useState<"local" | "balcao" | "delivery">("local");
-  const [mesa, setMesa] = useState<string>("");
+  const { mesa: urlMesaId } = Route.useSearch();
+  const [tipoEntrega, setTipoEntrega] = useState<"local" | "balcao" | "delivery">(urlMesaId ? "local" : "local");
+  const [mesaId, setMesaId] = useState<string>(urlMesaId || "");
+  const [modoMesa, setModoMesa] = useState<"junto" | "separado">("separado");
   const [endereco, setEndereco] = useState<string>("");
   const [clienteNome, setClienteNome] = useState<string>("");
   const [clienteTelefone, setClienteTelefone] = useState<string>("");
   const [obsPedido, setObsPedido] = useState<string>("");
   const [enviandoPedido, setEnviandoPedido] = useState(false);
+  const [detalhesMesa, setDetalhesMesa] = useState<any>(null);
+
+  // Buscar detalhes da mesa se vier na URL
+  useEffect(() => {
+    if (urlMesaId) {
+      (supabase.from("mesas" as any) as any).select("*").eq("id", urlMesaId).single().then(({ data }: any) => {
+        if (data) setDetalhesMesa(data);
+      });
+    }
+  }, [urlMesaId]);
 
   // Pedido Confirmado
   const [pedidoConfirmado, setPedidoConfirmado] = useState<{
@@ -601,7 +616,7 @@ function CardapioDigitalPage() {
     if (clienteTelefone) texto += `*WhatsApp:* ${clienteTelefone}\n`;
     texto += `*Tipo de Consumo:* ${
       tipoEntrega === "local"
-        ? `Consumo no EVS ${mesa ? `(Mesa: ${mesa})` : ""}`
+        ? `Consumo no EVS ${(detalhesMesa?.numero || mesaId) ? `(Mesa: ${detalhesMesa?.numero || mesaId})` : ""}`
         : tipoEntrega === "balcao"
           ? "Retirada no Balcão"
           : `Delivery (Endereço: ${endereco || "A combinar"})`
@@ -688,8 +703,10 @@ function CardapioDigitalPage() {
 
       // 2. Preparar observações completas com dados de entrega e consumo
       const obsPartes: string[] = [];
-      if (tipoEntrega === "local") {
-        obsPartes.push(`Consumo no EVS${mesa.trim() ? ` (Mesa: ${mesa.trim()})` : ""}`);
+      if (detalhesMesa) {
+        obsPartes.push(`Mesa: ${detalhesMesa.numero} (${modoMesa === 'junto' ? 'Na conta da Mesa' : 'Comanda Separada'})`);
+      } else if (tipoEntrega === "local") {
+        obsPartes.push(`Consumo no EVS${mesaId.trim() ? ` (Mesa: ${mesaId.trim()})` : ""}`);
       } else if (tipoEntrega === "balcao") {
         obsPartes.push("Retirada no Balcão");
       } else if (tipoEntrega === "delivery") {
@@ -701,11 +718,12 @@ function CardapioDigitalPage() {
       const obsFinal = obsPartes.join(" | ");
 
       // 3. Abrir comanda oficial no banco via RPC abrir_comanda
-      const { data: comandaAberta, error: comandaError } = await supabase.rpc("abrir_comanda", {
+      const { data: comandaAberta, error: comandaError } = await (supabase.rpc as any)("abrir_comanda", {
         _cliente_id: clienteId,
         _cliente_nome: clienteNome.trim(),
         _cliente_telefone: telLimpo || null,
         _observacoes: obsFinal || null,
+        _mesa_id: detalhesMesa ? detalhesMesa.id : null
       });
 
       if (comandaError || !comandaAberta) {
@@ -725,7 +743,7 @@ function CardapioDigitalPage() {
           if (match) prodIdReal = match.id;
         }
 
-        const { error: itemErr } = await supabase.rpc("adicionar_item_comanda", {
+        const { error: itemErr } = await (supabase.rpc as any)("adicionar_item_comanda", {
           _pedido_id: pedidoId,
           _produto_id: prodIdReal,
           _quantidade: item.quantidade,
@@ -1487,55 +1505,97 @@ function CardapioDigitalPage() {
                     Onde vai consumir?
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTipoEntrega("local")}
-                      className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center flex flex-col items-center gap-1 ${
-                        tipoEntrega === "local"
-                          ? "bg-emerald-50 border-emerald-500 text-emerald-800 font-bold shadow-2xs"
-                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <UtensilsCrossed className="size-4" />
-                      <span>No EVS</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTipoEntrega("balcao")}
-                      className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center flex flex-col items-center gap-1 ${
-                        tipoEntrega === "balcao"
-                          ? "bg-emerald-50 border-emerald-500 text-emerald-800 font-bold shadow-2xs"
-                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <ChefHat className="size-4" />
-                      <span>Balcão</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTipoEntrega("delivery")}
-                      className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center flex flex-col items-center gap-1 ${
-                        tipoEntrega === "delivery"
-                          ? "bg-emerald-50 border-emerald-500 text-emerald-800 font-bold shadow-2xs"
-                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      <MapPin className="size-4" />
-                      <span>Entrega</span>
-                    </button>
-                  </div>
-
-                  {tipoEntrega === "local" && (
-                    <div>
-                      <Label className="text-xs text-slate-700">Número da Mesa (opcional)</Label>
-                      <Input
-                        placeholder="Ex.: Mesa 03"
-                        value={mesa}
-                        onChange={(e) => setMesa(e.target.value)}
-                        className="bg-white border-slate-200 h-9 text-xs rounded-xl mt-1 text-slate-900 placeholder:text-slate-400 focus-visible:ring-emerald-600"
-                      />
+                  {detalhesMesa ? (
+                    <div className="space-y-3">
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800">
+                        <UtensilsCrossed className="size-4" />
+                        <span className="font-semibold text-sm">Você está na {detalhesMesa.numero}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setModoMesa("junto")}
+                          className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center flex flex-col items-center gap-1 ${
+                            modoMesa === "junto"
+                              ? "bg-emerald-50 border-emerald-500 text-emerald-800 font-bold shadow-2xs"
+                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          <Users className="size-4" />
+                          <span>Pagar tudo junto (Mesa)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setModoMesa("separado")}
+                          className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center flex flex-col items-center gap-1 ${
+                            modoMesa === "separado"
+                              ? "bg-emerald-50 border-emerald-500 text-emerald-800 font-bold shadow-2xs"
+                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          <User className="size-4" />
+                          <span>Comanda separada</span>
+                        </button>
+                      </div>
+                      {modoMesa === "junto" && (
+                        <p className="text-[11px] text-emerald-700 bg-emerald-50/50 p-2 rounded-lg">
+                          Seu pedido será somado na conta geral da mesa. O nome do responsável é obrigatório abaixo.
+                        </p>
+                      )}
                     </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTipoEntrega("local")}
+                          className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center flex flex-col items-center gap-1 ${
+                            tipoEntrega === "local"
+                              ? "bg-emerald-50 border-emerald-500 text-emerald-800 font-bold shadow-2xs"
+                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          <UtensilsCrossed className="size-4" />
+                          <span>No EVS</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTipoEntrega("balcao")}
+                          className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center flex flex-col items-center gap-1 ${
+                            tipoEntrega === "balcao"
+                              ? "bg-emerald-50 border-emerald-500 text-emerald-800 font-bold shadow-2xs"
+                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          <ChefHat className="size-4" />
+                          <span>Balcão</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTipoEntrega("delivery")}
+                          className={`p-2.5 rounded-xl border text-xs font-medium transition-all text-center flex flex-col items-center gap-1 ${
+                            tipoEntrega === "delivery"
+                              ? "bg-emerald-50 border-emerald-500 text-emerald-800 font-bold shadow-2xs"
+                              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          }`}
+                        >
+                          <MapPin className="size-4" />
+                          <span>Entrega</span>
+                        </button>
+                      </div>
+
+                      {tipoEntrega === "local" && (
+                        <div>
+                          <Label className="text-xs text-slate-700">Número da Mesa (opcional)</Label>
+                          <Input
+                            placeholder="Ex.: Mesa 03"
+                            value={mesaId}
+                            onChange={(e) => setMesaId(e.target.value)}
+                            className="bg-white border-slate-200 h-9 text-xs rounded-xl mt-1 text-slate-900 placeholder:text-slate-400 focus-visible:ring-emerald-600"
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {tipoEntrega === "delivery" && (

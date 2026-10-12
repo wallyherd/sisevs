@@ -9,7 +9,7 @@ type Resultado = {
   label: string;
   hint?: string;
   to: string;
-  group: "Clientes" | "Pedidos" | "Produtos" | "Estoque" | "Meu Slim";
+  group: "Clientes" | "Pedidos" | "Produtos" | "Estoque";
   icon: React.ComponentType<{ className?: string }>;
 };
 
@@ -38,14 +38,13 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
     const numericTerm = term.replace(/\D/g, "");
     let cancelled = false;
     (async () => {
-      const [cli, ped, prod, est, slim] = await Promise.all([
+      const [cli, ped, prod, est] = await Promise.all([
         supabase.from("clientes").select("id,nome,telefone").or(`nome.ilike.%${term}%,telefone.ilike.%${term}%`).limit(5),
         numericTerm
           ? supabase.from("pedidos").select("id,numero,total").eq("numero", Number(numericTerm)).limit(5)
           : Promise.resolve({ data: [] as any[] }),
         supabase.from("produtos").select("id,nome").ilike("nome", `%${term}%`).limit(5),
         supabase.from("estoque_itens").select("id,nome").ilike("nome", `%${term}%`).limit(5),
-        supabase.from("meu_slim_vendas").select("id,nome_cliente,tipo_kit").or(`nome_cliente.ilike.%${term}%,tipo_kit.ilike.%${term}%`).limit(5),
       ]);
       if (cancelled) return;
       const out: Resultado[] = [];
@@ -53,7 +52,6 @@ export function GlobalSearch({ open, onOpenChange }: { open: boolean; onOpenChan
       (ped.data ?? []).forEach((p: any) => out.push({ id: p.id, label: `Pedido #${p.numero}`, to: `/pedidos/${p.id}`, group: "Pedidos", icon: Receipt }));
       (prod.data ?? []).forEach((p: any) => out.push({ id: p.id, label: p.nome, to: `/produtos`, group: "Produtos", icon: Package }));
       (est.data ?? []).forEach((p: any) => out.push({ id: p.id, label: p.nome, to: `/estoque`, group: "Estoque", icon: Boxes }));
-      (slim.data ?? []).forEach((s: any) => out.push({ id: s.id, label: s.nome_cliente, hint: s.tipo_kit, to: `/meu-slim`, group: "Meu Slim", icon: Sparkles }));
       setResults(out);
     })();
     return () => { cancelled = true; };

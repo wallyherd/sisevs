@@ -22,7 +22,6 @@ import { Route as AuthenticatedCozinhaRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCrmRouteImport } from './routes/_authenticated/crm'
 import { Route as AuthenticatedEstoqueRouteImport } from './routes/_authenticated/estoque'
 import { Route as AuthenticatedFinanceiroRouteImport } from './routes/_authenticated/financeiro'
-import { Route as AuthenticatedMeuSlimRouteImport } from './routes/_authenticated/meu-slim'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
@@ -96,11 +95,6 @@ const AuthenticatedFinanceiroRoute = AuthenticatedFinanceiroRouteImport.update({
   path: '/financeiro',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedMeuSlimRoute = AuthenticatedMeuSlimRouteImport.update({
-  id: '/meu-slim',
-  path: '/meu-slim',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
@@ -152,7 +146,6 @@ export interface FileRoutesByFullPath {
   '/crm': typeof AuthenticatedCrmRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
-  '/meu-slim': typeof AuthenticatedMeuSlimRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
@@ -173,7 +166,6 @@ export interface FileRoutesByTo {
   '/crm': typeof AuthenticatedCrmRoute
   '/estoque': typeof AuthenticatedEstoqueRoute
   '/financeiro': typeof AuthenticatedFinanceiroRoute
-  '/meu-slim': typeof AuthenticatedMeuSlimRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/produtos': typeof AuthenticatedProdutosRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
@@ -197,7 +189,6 @@ export interface FileRoutesById {
   '/_authenticated/crm': typeof AuthenticatedCrmRoute
   '/_authenticated/estoque': typeof AuthenticatedEstoqueRoute
   '/_authenticated/financeiro': typeof AuthenticatedFinanceiroRoute
-  '/_authenticated/meu-slim': typeof AuthenticatedMeuSlimRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/produtos': typeof AuthenticatedProdutosRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
@@ -222,7 +213,6 @@ export interface FileRouteTypes {
     | '/crm'
     | '/estoque'
     | '/financeiro'
-    | '/meu-slim'
     | '/perfil'
     | '/produtos'
     | '/relatorios'
@@ -243,7 +233,6 @@ export interface FileRouteTypes {
     | '/crm'
     | '/estoque'
     | '/financeiro'
-    | '/meu-slim'
     | '/perfil'
     | '/produtos'
     | '/relatorios'
@@ -266,7 +255,6 @@ export interface FileRouteTypes {
     | '/_authenticated/crm'
     | '/_authenticated/estoque'
     | '/_authenticated/financeiro'
-    | '/_authenticated/meu-slim'
     | '/_authenticated/perfil'
     | '/_authenticated/produtos'
     | '/_authenticated/relatorios'
@@ -376,13 +364,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinanceiroRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/meu-slim': {
-      id: '/_authenticated/meu-slim'
-      path: '/meu-slim'
-      fullPath: '/meu-slim'
-      preLoaderRoute: typeof AuthenticatedMeuSlimRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/perfil': {
       id: '/_authenticated/perfil'
       path: '/perfil'
@@ -445,7 +426,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCrmRoute: typeof AuthenticatedCrmRoute
   AuthenticatedEstoqueRoute: typeof AuthenticatedEstoqueRoute
   AuthenticatedFinanceiroRoute: typeof AuthenticatedFinanceiroRoute
-  AuthenticatedMeuSlimRoute: typeof AuthenticatedMeuSlimRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
@@ -466,7 +446,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCrmRoute: AuthenticatedCrmRoute,
   AuthenticatedEstoqueRoute: AuthenticatedEstoqueRoute,
   AuthenticatedFinanceiroRoute: AuthenticatedFinanceiroRoute,
-  AuthenticatedMeuSlimRoute: AuthenticatedMeuSlimRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedProdutosRoute: AuthenticatedProdutosRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,

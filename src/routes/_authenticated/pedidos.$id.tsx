@@ -18,8 +18,9 @@ import { toast } from "sonner";
 import { useConfigLoja } from "@/hooks/use-config-loja";
 import {
   ArrowLeft, Plus, Trash2, X, Search, Lock, Receipt, Clock, ChefHat,
-  Banknote, Smartphone, CreditCard, Wallet, CheckCircle2,
+  Banknote, Smartphone, CreditCard, Wallet, CheckCircle2, Printer
 } from "lucide-react";
+import { printTicket } from "@/lib/print-ticket";
 import {
   STATUS_COMANDA_COLOR, STATUS_COMANDA_LABEL,
   PREPARO_COLOR, PREPARO_LABEL, MOTIVOS_CANCELAMENTO,
@@ -135,6 +136,9 @@ function ComandaDetailPage() {
         {bloqueada && (
           <Badge variant="outline" className="gap-1"><Lock className="size-3" /> Bloqueada para edição</Badge>
         )}
+        <Button variant="outline" size="sm" className="ml-auto" onClick={() => printTicket(comanda, itensAtivos, 'caixa')}>
+          <Printer className="size-4 mr-2" /> Imprimir
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-[1fr_340px] gap-4">

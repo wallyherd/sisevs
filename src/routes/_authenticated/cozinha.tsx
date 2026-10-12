@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ChefHat, Clock, Flame, CheckCircle2, X, PackageCheck } from "lucide-react";
+import { ChefHat, Clock, Flame, CheckCircle2, X, PackageCheck, Printer } from "lucide-react";
 import { PREPARO_COLOR, PREPARO_LABEL, MOTIVOS_CANCELAMENTO } from "@/lib/pedido-fluxo";
+import { printTicket } from "@/lib/print-ticket";
 
 export const Route = createFileRoute("/_authenticated/cozinha")({
   head: () => ({ meta: [{ title: "Cozinha — FitLife" }] }),
@@ -33,6 +34,8 @@ type ItemCozinha = {
     numero: number;
     status_comanda: string;
     cliente_nome_rapido: string | null;
+    aberta_em?: string;
+    data_hora?: string;
     cliente: { nome: string; telefone: string | null } | null;
   };
 };
@@ -51,7 +54,7 @@ function CozinhaPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("pedido_itens")
-        .select("id,pedido_id,nome_produto,quantidade,sabor,adicionais,observacoes,observacoes_cozinha,status_preparo,enviado_cozinha_em,preparo_iniciado_em,pronto_em,entregue_em,rodada,pedido:pedidos!inner(numero,status_comanda,cliente_nome_rapido,cliente:clientes(nome,telefone))")
+        .select("id,pedido_id,nome_produto,quantidade,sabor,adicionais,observacoes,observacoes_cozinha,status_preparo,enviado_cozinha_em,preparo_iniciado_em,pronto_em,entregue_em,rodada,pedido:pedidos!inner(numero,status_comanda,cliente_nome_rapido,aberta_em,data_hora,cliente:clientes(nome,telefone))")
         .eq("envia_para_cozinha", true)
         .in("status_preparo", ["novo", "em_preparo", "pronto"])
         .order("enviado_cozinha_em", { ascending: true, nullsFirst: true });
@@ -122,7 +125,12 @@ function CozinhaPage() {
                     <Card key={it.id} className={"p-3 border-l-4 " + (urgente ? "border-l-destructive" : tone)}>
                       <div className="flex items-start justify-between mb-1.5">
                         <div className="text-base font-bold">#{it.pedido.numero} <span className="text-xs font-normal text-muted-foreground">· Rod. {it.rodada}</span></div>
-                        <Badge variant="outline" className={PREPARO_COLOR[it.status_preparo]}>{PREPARO_LABEL[it.status_preparo]}</Badge>
+                        <div className="flex gap-2 items-center">
+                          <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" onClick={() => printTicket(it.pedido, [it], 'cozinha')}>
+                            <Printer className="size-3.5" />
+                          </Button>
+                          <Badge variant="outline" className={PREPARO_COLOR[it.status_preparo]}>{PREPARO_LABEL[it.status_preparo]}</Badge>
+                        </div>
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1 flex-wrap">
                         <span className="flex items-center gap-1">

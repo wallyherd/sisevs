@@ -11,8 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { ArrowLeft, ChevronRight, Search, UserPlus, User2, UserCheck, Coffee } from "lucide-react";
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+import { z } from "zod";
+
 export const Route = createFileRoute("/_authenticated/pedidos/novo")({
   head: () => ({ meta: [{ title: "Nova comanda — FitLife" }] }),
+  validateSearch: (search) => z.object({ mesa: z.string().optional() }).parse(search),
   component: NovaComandaPage,
 });
 
@@ -20,6 +25,7 @@ type Cliente = { id: string; nome: string; telefone: string | null };
 type Modo = "cadastrado" | "rapido" | "balcao";
 
 function NovaComandaPage() {
+  const { mesa: mesaId } = Route.useSearch();
   const navigate = useNavigate();
   const [modo, setModo] = useState<Modo>("cadastrado");
   const [cliente, setCliente] = useState<Cliente | null>(null);
@@ -27,6 +33,24 @@ function NovaComandaPage() {
   const [telRapido, setTelRapido] = useState("");
   const [obs, setObs] = useState("");
   const [abrindo, setAbrindo] = useState(false);
+  const [mesaSelecionada, setMesaSelecionada] = useState<string>(mesaId || "nenhuma");
+
+  const { data: mesa } = useQuery({
+    queryKey: ["mesa", mesaId],
+    enabled: !!mesaId,
+    queryFn: async () => {
+      const { data } = await supabase.from("mesas").select("id, numero").eq("id", mesaId).single();
+      return data;
+    }
+  });
+
+  const { data: todasMesas = [] } = useQuery({
+    queryKey: ["todas-mesas"],
+    queryFn: async () => {
+      const { data } = await supabase.from("mesas").select("id, numero, status").order("numero");
+      return data || [];
+    }
+  });
 
   async function abrirComanda() {
     if (modo === "cadastrado" && !cliente) {
@@ -43,6 +67,7 @@ function NovaComandaPage() {
       _cliente_nome: modo === "rapido" ? nomeRapido.trim() : modo === "balcao" ? "Consumidor balcão" : (null as any),
       _cliente_telefone: modo === "rapido" ? telRapido.replace(/\D/g, "") : (null as any),
       _observacoes: (obs || null) as any,
+      _mesa_id: mesaSelecionada !== "nenhuma" ? mesaSelecionada : null,
     });
     setAbrindo(false);
     if (error || !data) {
@@ -62,7 +87,9 @@ function NovaComandaPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-heading font-bold">Nova comanda</h1>
-          <p className="text-sm text-muted-foreground">Identifique o cliente e abra a comanda. Os produtos são adicionados depois.</p>
+          <p className="text-sm text-muted-foreground">
+            {mesa ? `Abrindo comanda para ${mesa.numero}.` : "Identifique o cliente e abra a comanda."}
+          </p>
         </div>
       </div>
 
@@ -105,6 +132,27 @@ function NovaComandaPage() {
             )}
 
             <div>
+              <Label>Vincular a uma Mesa (Opcional)</Label>
+              {mesa ? (
+                <div className="rounded-lg border border-border p-3 text-sm font-medium bg-emerald-50 text-emerald-800">
+                  Comanda será vinculada à {mesa.numero}.
+                </div>
+              ) : (
+                <Select value={mesaSelecionada} onValueChange={setMesaSelecionada}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione uma mesa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhuma">Nenhuma / Balcão</SelectItem>
+                    {todasMesas.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.numero} {m.status === 'ocupada' ? '(Ocupada)' : ''}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div>
               <Label>Observações (opcional)</Label>
               <Textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ex.: mesa 3, viagem, retirada..." />
             </div>
@@ -129,7 +177,7 @@ function ModoBtn({ icon: Icon, label, ativo, onClick }: { icon: any; label: stri
       onClick={onClick}
       className={
         "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-sm font-medium transition-colors " +
-        (ativo ? "border-gold bg-gold/10 text-gold-foreground" : "border-border hover:border-primary/40")
+        (ativo ? "border-gold bg-gold/10 text-gold" : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground")
       }
     >
       <Icon className="size-5" />

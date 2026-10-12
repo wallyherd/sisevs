@@ -29,7 +29,7 @@ type Item = {
 };
 
 const UNIDADES = ["unidade","pote","sachê","dose","caixa","pacote","g","kg","l","ml"];
-const CATEGORIAS = ["Insumos Herbalife","Embalagens","Ingredientes","Kits Meu Slim","Outros"];
+const CATEGORIAS = ["Insumos Herbalife","Embalagens","Ingredientes","Outros"];
 
 type Filtro = "todos" | "baixo" | "zerado" | "vencendo" | "vencido" | "ativos" | "inativos";
 
@@ -180,7 +180,7 @@ function EstoquePage() {
         </table>
       </div>
 
-      {(novo || editar) && <ItemForm item={editar} onClose={() => { setNovo(false); setEditar(null); qc.invalidateQueries({ queryKey: ["estoque"] }); }} onMovimentar={(it) => { setEditar(null); setNovo(false); setMovItem(it); }} />}
+      {(novo || editar) && <ItemForm item={editar} categoriasDisponiveis={Array.from(new Set([...CATEGORIAS, ...itens.map(i => i.categoria).filter(Boolean)]))} onClose={() => { setNovo(false); setEditar(null); qc.invalidateQueries({ queryKey: ["estoque"] }); }} onMovimentar={(it) => { setEditar(null); setNovo(false); setMovItem(it); }} />}
       {movItem && <MovDialog item={movItem} onClose={() => { setMovItem(null); qc.invalidateQueries({ queryKey: ["estoque"] }); }} />}
       {histItem && <HistDialog item={histItem} onClose={() => setHistItem(null)} />}
     </>
@@ -189,7 +189,7 @@ function EstoquePage() {
 
 const UNIDADES_INTEIRAS = new Set(["unidade","caixa","pacote","pote","sachê"]);
 
-function ItemForm({ item, onClose, onMovimentar }: { item: Item | null; onClose: () => void; onMovimentar: (item: Item) => void }) {
+function ItemForm({ item, categoriasDisponiveis, onClose, onMovimentar }: { item: Item | null; categoriasDisponiveis: string[]; onClose: () => void; onMovimentar: (item: Item) => void }) {
   const isNew = !item;
   const [f, setF] = useState({
     nome: item?.nome ?? "", categoria: item?.categoria ?? "Insumos Herbalife",
@@ -250,7 +250,7 @@ function ItemForm({ item, onClose, onMovimentar }: { item: Item | null; onClose:
             <Select value={f.categoria} onValueChange={v => setF({ ...f, categoria: v, novaCategoria: "" })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                {categoriasDisponiveis.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 <SelectItem value="outra">+ Nova Categoria...</SelectItem>
               </SelectContent>
             </Select>
