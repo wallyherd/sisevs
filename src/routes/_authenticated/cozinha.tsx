@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ChefHat, Clock, Flame, CheckCircle2, X, PackageCheck, Printer } from "lucide-react";
+import { ChefHat, Clock, Flame, CheckCircle2, X, PackageCheck, Printer, RefreshCw } from "lucide-react";
 import { PREPARO_COLOR, PREPARO_LABEL, MOTIVOS_CANCELAMENTO } from "@/lib/pedido-fluxo";
 import { printTicket } from "@/lib/print-ticket";
 
@@ -30,14 +30,14 @@ type ItemCozinha = {
   pronto_em: string | null;
   entregue_em: string | null;
   rodada: number;
-  pedido: {
+  pedido?: {
     numero: number;
     status_comanda: string;
     cliente_nome_rapido: string | null;
     aberta_em?: string;
     data_hora?: string;
     cliente: { nome: string; telefone: string | null } | null;
-  };
+  } | null;
 };
 
 const COLUNAS: { keys: string[]; titulo: string; icone: any; tone: string; proximo?: string; proximoLabel?: string }[] = [
@@ -49,15 +49,19 @@ const COLUNAS: { keys: string[]; titulo: string; icone: any; tone: string; proxi
 function CozinhaPage() {
   const qc = useQueryClient();
 
-  const { data: itens = [], isLoading } = useQuery({
+  const { data: itens = [], isLoading, isError, error: queryError } = useQuery({
     queryKey: ["cozinha-itens"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("pedido_itens")
         .select("id,pedido_id,nome_produto,quantidade,sabor,adicionais,observacoes,observacoes_cozinha,status_preparo,enviado_cozinha_em,preparo_iniciado_em,pronto_em,entregue_em,rodada,pedido:pedidos!inner(numero,status_comanda,cliente_nome_rapido,aberta_em,data_hora,cliente:clientes(nome,telefone))")
         .eq("envia_para_cozinha", true)
         .in("status_preparo", ["novo", "em_preparo", "pronto"])
         .order("enviado_cozinha_em", { ascending: true, nullsFirst: true });
+      if (error) {
+        console.error("Erro ao carregar itens da cozinha:", error);
+        throw error;
+      }
       return (data ?? []) as unknown as ItemCozinha[];
     },
   });
@@ -77,7 +81,10 @@ function CozinhaPage() {
   async function avancar(it: ItemCozinha, novo: string) {
     const { error } = await supabase.rpc("avancar_item_preparo", { _item_id: it.id, _novo_status: novo });
     if (error) toast.error(error.message);
-    else { toast.success(`#${it.pedido.numero} • ${it.nome_produto} → ${PREPARO_LABEL[novo]}`); qc.invalidateQueries({ queryKey: ["cozinha-itens"] }); }
+    else {
+      toast.success(`#${it.pedido?.numero ?? ""} • ${it.nome_produto} → ${PREPARO_LABEL[novo] ?? novo}`);
+      qc.invalidateQueries({ queryKey: ["cozinha-itens"] });
+    }
   }
 
   async function cancelar(it: ItemCozinha) {
@@ -100,6 +107,19 @@ function CozinhaPage() {
 
       {isLoading && <p className="text-muted-foreground text-sm">Carregando...</p>}
 
+      {isError && (
+        <div className="p-4 mb-4 border border-destructive/30 bg-destructive/10 rounded-lg text-sm text-destructive flex items-center justify-between">
+          <div>
+            <p className="font-semibold">Erro ao carregar itens da cozinha</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{(queryError as Error)?.message ?? "Tente novamente mais tarde."}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => qc.invalidateQueries({ queryKey: ["cozinha-itens"] })}>
+            <RefreshCw className="size-3.5 mr-1.5" />
+            Recarregar
+          </Button>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-4">
         {COLUNAS.map(({ keys, titulo, icone: Icon, tone, proximo, proximoLabel }) => {
           const lista = itens.filter((i) => keys.includes(i.status_preparo));
@@ -118,24 +138,28 @@ function CozinhaPage() {
                 )}
                 {lista.map((it) => {
                   const enviado = it.enviado_cozinha_em ? new Date(it.enviado_cozinha_em) : null;
-                  const idadeMin = enviado ? (Date.now() - enviado.getTime()) / 60000 : 0;
+                  const idadeMin = enviado && !isNaN(enviado.getTime()) ? (Date.now() - enviado.getTime()) / 60000 : 0;
                   const urgente = idadeMin > 10 && it.status_preparo !== "pronto";
-                  const nome = it.pedido.cliente?.nome ?? it.pedido.cliente_nome_rapido ?? "Balcão";
+                  const nome = it.pedido?.cliente?.nome ?? it.pedido?.cliente_nome_rapido ?? "Balcão";
                   return (
                     <Card key={it.id} className={"p-3 border-l-4 " + (urgente ? "border-l-destructive" : tone)}>
                       <div className="flex items-start justify-between mb-1.5">
-                        <div className="text-base font-bold">#{it.pedido.numero} <span className="text-xs font-normal text-muted-foreground">· Rod. {it.rodada}</span></div>
+                        <div className="text-base font-bold">#{it.pedido?.numero ?? "?"} <span className="text-xs font-normal text-muted-foreground">· Rod. {it.rodada ?? 1}</span></div>
                         <div className="flex gap-2 items-center">
-                          <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" onClick={() => printTicket(it.pedido, [it], 'cozinha')}>
-                            <Printer className="size-3.5" />
-                          </Button>
-                          <Badge variant="outline" className={PREPARO_COLOR[it.status_preparo]}>{PREPARO_LABEL[it.status_preparo]}</Badge>
+                          {it.pedido && (
+                            <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" onClick={() => printTicket(it.pedido!, [it], 'cozinha')}>
+                              <Printer className="size-3.5" />
+                            </Button>
+                          )}
+                          <Badge variant="outline" className={PREPARO_COLOR[it.status_preparo] ?? ""}>
+                            {PREPARO_LABEL[it.status_preparo] ?? it.status_preparo}
+                          </Badge>
                         </div>
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-1.5 mb-1 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Clock className="size-3" />
-                          {enviado ? enviado.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                          {enviado && !isNaN(enviado.getTime()) ? enviado.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
                         </span>
                         {urgente && <span className="text-destructive font-semibold">há {Math.round(idadeMin)}min</span>}
                         {(it.preparo_iniciado_em || it.pronto_em) && (
@@ -186,6 +210,8 @@ function CozinhaTimer({ start, end }: { start: string | null, end: string | null
   if (!start) return null;
 
   const startTime = new Date(start).getTime();
+  if (isNaN(startTime)) return null;
+
   const endTime = end ? new Date(end).getTime() : now;
   const diff = Math.max(0, Math.floor((endTime - startTime) / 1000));
   
