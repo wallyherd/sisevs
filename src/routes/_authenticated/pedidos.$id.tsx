@@ -70,10 +70,11 @@ function ComandaDetailPage() {
     const ch = supabase
       .channel("comanda-" + id)
       .on("postgres_changes", { event: "*", schema: "public", table: "pedido_itens", filter: `pedido_id=eq.${id}` }, () => {
-        qc.invalidateQueries({ queryKey: ["comanda", id] });
+        // Pequeno delay para garantir que o banco já finalizou a transação
+        setTimeout(() => qc.invalidateQueries({ queryKey: ["comanda", id] }), 300);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "pedidos", filter: `id=eq.${id}` }, () => {
-        qc.invalidateQueries({ queryKey: ["comanda", id] });
+        setTimeout(() => qc.invalidateQueries({ queryKey: ["comanda", id] }), 300);
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -520,7 +521,7 @@ const FORMAS: { value: Forma; label: string; icon: any }[] = [
   { value: "credito", label: "Crédito", icon: Wallet },
 ];
 
-type Linha = { id: string; forma: Forma; valor: string; recebido: string; obs: string };
+type Linha = { id: string; forma: Forma; valor: string; obs: string };
 
 function FecharContaDialog({ pedidoId, numero, subtotal, descontoAtual, onClose, onClosed }: {
   pedidoId: string; numero: number; subtotal: number; descontoAtual: number;
@@ -534,7 +535,7 @@ function FecharContaDialog({ pedidoId, numero, subtotal, descontoAtual, onClose,
   const formaPadrao: Forma = (formasDisponiveis[0]?.value ?? "pix");
   const [desconto, setDesconto] = useState<string>(String(descontoAtual || 0));
   const [linhas, setLinhas] = useState<Linha[]>([
-    { id: crypto.randomUUID(), forma: formaPadrao, valor: "", recebido: "", obs: "" },
+    { id: crypto.randomUUID(), forma: formaPadrao, valor: "", obs: "" },
   ]);
   const [saving, setSaving] = useState(false);
 
@@ -565,7 +566,7 @@ function FecharContaDialog({ pedidoId, numero, subtotal, descontoAtual, onClose,
   }
 
   function adicionar() {
-    setLinhas(arr => [...arr, { id: crypto.randomUUID(), forma: formaPadrao, valor: "", recebido: "", obs: "" }]);
+    setLinhas(arr => [...arr, { id: crypto.randomUUID(), forma: formaPadrao, valor: "", obs: "" }]);
   }
 
   function remover(id: string) {
@@ -578,7 +579,7 @@ function FecharContaDialog({ pedidoId, numero, subtotal, descontoAtual, onClose,
       .map(l => ({
         forma: l.forma,
         valor: Number(l.valor),
-        valor_recebido: l.forma === "dinheiro" && Number(l.recebido) > 0 ? Number(l.recebido) : Number(l.valor),
+        valor_recebido: Number(l.valor),
         observacoes: l.obs || undefined,
       }));
     if (pagamentos.length === 0) { toast.error("Adicione ao menos um pagamento."); return; }
@@ -662,13 +663,13 @@ function FecharContaDialog({ pedidoId, numero, subtotal, descontoAtual, onClose,
                       return (
                         <button key={f.value} onClick={() => setLinhas(arr => arr.map((x, i) => i === idx ? { ...x, forma: f.value } : x))}
                           className={"flex items-center justify-center gap-1 rounded-md border p-1.5 text-xs font-medium transition-colors " +
-                            (ativo ? "border-gold bg-gold/10 text-gold-foreground" : "border-border hover:border-primary/40")}>
+                            (ativo ? "border-emerald-500 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : "border-border hover:border-emerald-400/60")}>
                           <Icon className="size-3" /> {f.label}
                         </button>
                       );
                     })}
                   </div>
-                  <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                  <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                     <div>
                       <Label className="text-xs">Valor *</Label>
                       <div className="flex gap-1">
@@ -680,14 +681,6 @@ function FecharContaDialog({ pedidoId, numero, subtotal, descontoAtual, onClose,
                         </Button>
                       </div>
                     </div>
-                    {l.forma === "dinheiro" ? (
-                      <div>
-                        <Label className="text-xs">Recebido (p/ troco)</Label>
-                        <Input type="number" step="0.01" value={l.recebido}
-                          onChange={(e) => setLinhas(arr => arr.map((x, i) => i === idx ? { ...x, recebido: e.target.value } : x))}
-                          placeholder={l.valor || "0,00"} />
-                      </div>
-                    ) : <div />}
                     {linhas.length > 1 && (
                       <Button type="button" variant="ghost" size="icon" onClick={() => remover(l.id)} className="text-destructive">
                         <Trash2 className="size-4" />

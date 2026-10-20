@@ -47,6 +47,7 @@ type NavItem = {
   adminOnly?: boolean;
   financeiroOnly?: boolean;
   mobilePrimary?: boolean;
+  funcionarioHidden?: boolean;
 };
 
 type NavGroup = {
@@ -58,7 +59,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "Operação",
     items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard, mobilePrimary: true },
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, mobilePrimary: true, funcionarioHidden: true },
       { to: "/pedidos", label: "Comandas", icon: Receipt, mobilePrimary: true },
       { to: "/cozinha", label: "Cozinha", icon: ChefHat, mobilePrimary: true },
     ],
@@ -111,6 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // Funcionario (default fallback)
     if (item.adminOnly) return false;
     if (item.financeiroOnly) return false;
+    if (item.funcionarioHidden) return false;
     const gestaoRoutes = ["/caixa", "/financeiro", "/relatorios", "/auditoria", "/usuarios", "/configuracoes"];
     if (gestaoRoutes.includes(item.to)) return false;
     

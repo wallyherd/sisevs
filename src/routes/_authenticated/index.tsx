@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,6 +9,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   ChefHat,
   Receipt,
@@ -54,10 +61,19 @@ export const Route = createFileRoute("/_authenticated/")({
 });
 
 function Dashboard() {
-  const { perfil, podeFinanceiro } = useAuth();
+  const { perfil, podeFinanceiro, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [periodo, setPeriodo] = useState<Periodo>("hoje");
   const [custom, setCustom] = useState({ de: "", ate: "" });
   const { ini, fim, label } = rangeFor(periodo, custom);
+  const [faturamentoOpen, setFaturamentoOpen] = useState(false);
+
+  // Redirecionar funcionário para Comandas
+  useEffect(() => {
+    if (perfil && perfil.role === "funcionario") {
+      navigate({ to: "/pedidos" as any, replace: true });
+    }
+  }, [perfil, navigate]);
 
   const { data: pedidos = [] } = useQuery({
     queryKey: ["dash-pedidos", periodo, custom.de, custom.ate],
@@ -259,6 +275,15 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Faturamento popup */}
+      <FaturamentoDialog
+        open={faturamentoOpen}
+        onClose={() => setFaturamentoOpen(false)}
+        pagas={pagas}
+        parciais={parciais}
+        faturamento={faturamento}
+      />
+
       {/* Main KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi
@@ -267,6 +292,7 @@ function Dashboard() {
           icon={TrendingUp}
           theme="emerald"
           badge="Vendas Concluídas"
+          onClick={() => setFaturamentoOpen(true)}
         />
         <Kpi
           title="Valores a Receber"
@@ -696,12 +722,14 @@ function Kpi({
   icon: Icon,
   theme,
   badge,
+  onClick,
 }: {
   title: string;
   value: string;
   icon: React.ComponentType<{ className?: string }>;
   theme: "emerald" | "gold" | "amber" | "teal" | "rose" | "slate";
   badge?: string;
+  onClick?: () => void;
 }) {
   const styles = {
     emerald: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
@@ -713,7 +741,10 @@ function Kpi({
   };
 
   return (
-    <Card className="border-border/80 shadow-xs hover:border-emerald-500/40 transition-colors">
+    <Card
+      className={"border-border/80 shadow-xs hover:border-emerald-500/40 transition-colors" + (onClick ? " cursor-pointer" : "")}
+      onClick={onClick}
+    >
       <CardContent className="p-4 md:p-5 flex flex-col justify-between h-full space-y-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
@@ -732,9 +763,84 @@ function Kpi({
               {badge}
             </div>
           )}
+          {onClick && (
+            <div className="text-[10px] text-emerald-600 font-semibold mt-1">Clique para detalhar →</div>
+          )}
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function FaturamentoDialog({
+  open, onClose, pagas, parciais, faturamento,
+}: {
+  open: boolean;
+  onClose: () => void;
+  pagas: any[];
+  parciais: any[];
+  faturamento: number;
+}) {
+  const hoje = startOfDay(new Date());
+  const pagasHoje = pagas.filter((p: any) => new Date(p.data_hora) >= hoje);
+  const parciaisHoje = parciais.filter((p: any) => new Date(p.data_hora) >= hoje);
+  const faturamentoHoje =
+    pagasHoje.reduce((s: number, p: any) => s + Number(p.total), 0) +
+    parciaisHoje.reduce((s: number, p: any) => s + Number(p.valor_pago || 0), 0);
+
+  const todos = [
+    ...pagasHoje.map((p: any) => ({ ...p, _tipo: "pago" })),
+    ...parciaisHoje.map((p: any) => ({ ...p, _tipo: "parcial" })),
+  ].sort((a: any, b: any) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime());
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <TrendingUp className="size-4 text-emerald-600" />
+            Faturamento Confirmado — Hoje
+          </DialogTitle>
+          <DialogDescription>
+            Vendas pagas e parciais registradas hoje ({format(new Date(), "dd/MM/yyyy")}).
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex justify-between items-center text-sm px-1 py-2 border-b border-border">
+          <span className="text-muted-foreground font-medium">{todos.length} pedido{todos.length !== 1 ? "s" : ""}</span>
+          <span className="text-xl font-bold text-emerald-600">{brl(faturamentoHoje)}</span>
+        </div>
+        <div className="overflow-y-auto flex-1 pr-1">
+          {todos.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">Nenhum pagamento hoje.</div>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {todos.map((p: any) => {
+                const valor = p._tipo === "pago" ? Number(p.total) : Number(p.valor_pago || 0);
+                return (
+                  <li key={p.id} className="py-2.5 flex items-center justify-between gap-3 text-sm">
+                    <div className="flex items-center gap-2.5">
+                      <div className="size-7 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-xs">
+                        #{p.numero}
+                      </div>
+                      <div>
+                        <div className="font-medium text-foreground">
+                          {format(new Date(p.data_hora), "HH:mm")}
+                          {p.forma_pagamento && <span className="text-muted-foreground font-normal"> · {p.forma_pagamento}</span>}
+                        </div>
+                        {p._tipo === "parcial" && (
+                          <div className="text-[10px] text-amber-600 font-semibold uppercase">Parcial</div>
+                        )}
+                      </div>
+                    </div>
+                    <span className="font-bold text-foreground tabular-nums">{brl(valor)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

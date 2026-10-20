@@ -272,9 +272,9 @@ function CaixaPage() {
 
 function Kpi({ label, value, icon, highlight }: { label: string; value: string; icon?: React.ReactNode; highlight?: boolean }) {
   return (
-    <Card className={"p-3 " + (highlight ? "border-gold/40 bg-gold/5" : "")}>
+    <Card className={"p-3 " + (highlight ? "border-emerald-500/40 bg-emerald-500/5" : "")}>
       <div className="text-[11px] uppercase text-muted-foreground flex items-center gap-1">{icon} {label}</div>
-      <div className={"text-lg font-bold " + (highlight ? "text-gold-foreground" : "")}>{value}</div>
+      <div className={"text-lg font-bold " + (highlight ? "text-emerald-700 dark:text-emerald-400" : "")}>{value}</div>
     </Card>
   );
 }

@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { brl } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Package, Tag, Sparkles, ShieldOff } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, Tag, Sparkles, ShieldOff, LayoutGrid, List, ChefHat } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/produtos")({
   head: () => ({ meta: [{ title: "Produtos — FitLife" }] }),
@@ -89,6 +89,7 @@ function ProdutosTab() {
   const [editing, setEditing] = useState<Produto | null>(null);
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
+  const [viewMode, setViewMode] = useState<"grade" | "lista">("grade");
 
   const { data: produtos = [] } = useQuery({
     queryKey: ["produtos-admin"],
@@ -113,44 +114,141 @@ function ProdutosTab() {
     else { toast.success("Excluído"); qc.invalidateQueries({ queryKey: ["produtos-admin"] }); }
   }
 
+  async function toggleField(p: Produto, field: "ativo" | "aparece_no_pedido" | "envia_para_cozinha", val: boolean) {
+    const { error } = await supabase.from("produtos").update({ [field]: val }).eq("id", p.id);
+    if (error) toast.error(error.message);
+    else qc.invalidateQueries({ queryKey: ["produtos-admin"] });
+  }
+
   function novo() { setEditing(null); setOpen(true); }
   function editar(p: Produto) { setEditing(p); setOpen(true); }
 
   return (
     <>
-      <div className="flex gap-2 mb-3">
-        <Input placeholder="Buscar produto..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+      <div className="flex gap-2 mb-3 flex-wrap">
+        <Input placeholder="Buscar produto..." value={busca} onChange={(e) => setBusca(e.target.value)} className="flex-1 min-w-[180px]" />
+        {/* Toggle grade/lista */}
+        <div className="flex border border-border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setViewMode("grade")}
+            className={"px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors " +
+              (viewMode === "grade" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted")}
+            title="Visualizar em grade"
+          >
+            <LayoutGrid className="size-4" />
+            <span className="hidden sm:inline">Grade</span>
+          </button>
+          <button
+            onClick={() => setViewMode("lista")}
+            className={"px-3 py-2 flex items-center gap-1.5 text-xs font-medium transition-colors border-l border-border " +
+              (viewMode === "lista" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted")}
+            title="Visualizar em lista"
+          >
+            <List className="size-4" />
+            <span className="hidden sm:inline">Lista</span>
+          </button>
+        </div>
         <Button onClick={novo} className="bg-gold text-gold-foreground hover:bg-gold/90 shrink-0">
           <Plus className="size-4 mr-1" /> Novo produto
         </Button>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filtrados.map((p) => (
-          <Card key={p.id} className="p-4">
-            <div className="flex items-start justify-between mb-1">
-              <div className="font-heading font-semibold">{p.nome}</div>
-              <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={() => editar(p)}><Pencil className="size-4" /></Button>
-                <Button size="icon" variant="ghost" onClick={() => excluir(p)}><Trash2 className="size-4 text-destructive" /></Button>
+      {viewMode === "grade" ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtrados.map((p) => (
+            <Card key={p.id} className="p-4">
+              <div className="flex items-start justify-between mb-1">
+                <div className="font-heading font-semibold">{p.nome}</div>
+                <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => editar(p)}><Pencil className="size-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => excluir(p)}><Trash2 className="size-4 text-destructive" /></Button>
+                </div>
               </div>
+              <div className="text-xs text-muted-foreground mb-2">{p.categoria?.nome ?? "Sem categoria"}</div>
+              {p.descricao && <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{p.descricao}</p>}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-lg font-bold text-primary">{brl(p.preco)}</div>
+                  <div className="text-xs text-muted-foreground">custo {brl(p.custo)}</div>
+                </div>
+                <div className="flex flex-col gap-1 items-end">
+                  {!p.ativo && <Badge variant="outline" className="text-xs">Inativo</Badge>}
+                  {!p.aparece_no_pedido && <Badge variant="outline" className="text-xs">Oculto</Badge>}
+                </div>
+              </div>
+            </Card>
+          ))}
+          {filtrados.length === 0 && <p className="text-center col-span-full py-12 text-muted-foreground">Nenhum produto.</p>}
+        </div>
+      ) : (
+        // ── MODO LISTA com edição em lote ──
+        <Card className="overflow-hidden">
+          {viewMode === "lista" && (
+            <div className="bg-muted/50 border-b border-border px-4 py-2 text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+              Alterações de ativo/visível/cozinha são salvas imediatamente. Use o lápis para editar detalhes.
             </div>
-            <div className="text-xs text-muted-foreground mb-2">{p.categoria?.nome ?? "Sem categoria"}</div>
-            {p.descricao && <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{p.descricao}</p>}
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-lg font-bold text-primary">{brl(p.preco)}</div>
-                <div className="text-xs text-muted-foreground">custo {brl(p.custo)}</div>
-              </div>
-              <div className="flex flex-col gap-1 items-end">
-                {!p.ativo && <Badge variant="outline" className="text-xs">Inativo</Badge>}
-                {!p.aparece_no_pedido && <Badge variant="outline" className="text-xs">Oculto</Badge>}
-              </div>
-            </div>
-          </Card>
-        ))}
-        {filtrados.length === 0 && <p className="text-center col-span-full py-12 text-muted-foreground">Nenhum produto.</p>}
-      </div>
+          )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-xs uppercase text-muted-foreground border-b border-border">
+                <tr>
+                  <th className="text-left py-2.5 px-4">Produto</th>
+                  <th className="text-left px-3">Categoria</th>
+                  <th className="text-right px-3">Preço</th>
+                  <th className="text-right px-3">Custo</th>
+                  <th className="text-center px-3">Ativo</th>
+                  <th className="text-center px-3">Aparece</th>
+                  <th className="text-center px-3"><ChefHat className="size-3.5 mx-auto" /></th>
+                  <th className="px-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map((p) => (
+                  <tr key={p.id} className="border-b border-border/60 hover:bg-muted/30 transition-colors">
+                    <td className="py-2.5 px-4">
+                      <div className="font-medium">{p.nome}</div>
+                      {p.descricao && <div className="text-[11px] text-muted-foreground truncate max-w-[200px]">{p.descricao}</div>}
+                    </td>
+                    <td className="px-3 text-muted-foreground">{p.categoria?.nome ?? "—"}</td>
+                    <td className="px-3 text-right font-semibold text-primary tabular-nums">{brl(p.preco)}</td>
+                    <td className="px-3 text-right text-muted-foreground tabular-nums">{brl(p.custo)}</td>
+                    <td className="px-3 text-center">
+                      <Switch
+                        checked={p.ativo}
+                        onCheckedChange={(v) => toggleField(p, "ativo", v)}
+                        aria-label="Ativo"
+                      />
+                    </td>
+                    <td className="px-3 text-center">
+                      <Switch
+                        checked={p.aparece_no_pedido}
+                        onCheckedChange={(v) => toggleField(p, "aparece_no_pedido", v)}
+                        aria-label="Aparece na comanda"
+                      />
+                    </td>
+                    <td className="px-3 text-center">
+                      <Switch
+                        checked={p.envia_para_cozinha}
+                        onCheckedChange={(v) => toggleField(p, "envia_para_cozinha", v)}
+                        aria-label="Envia para cozinha"
+                      />
+                    </td>
+                    <td className="px-3">
+                      <div className="flex gap-1 justify-end">
+                        <Button size="icon" variant="ghost" onClick={() => editar(p)}><Pencil className="size-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => excluir(p)}><Trash2 className="size-4 text-destructive" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filtrados.length === 0 && (
+                  <tr><td colSpan={8} className="text-center py-12 text-muted-foreground">Nenhum produto.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <ProdutoDialog open={open} onOpenChange={setOpen} produto={editing} />
     </>
