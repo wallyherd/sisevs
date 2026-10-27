@@ -69,8 +69,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/produtos", label: "Produtos", icon: Package },
       { to: "/estoque", label: "Estoque", icon: Boxes },
-      { to: "/composicao", label: "Composição", icon: Blocks, adminOnly: true },
-      { to: "/crm", label: "CRM & WhatsApp", icon: MessageSquareText },
       { to: "/clientes", label: "Clientes", icon: Users },
     ],
   },
@@ -80,6 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/caixa", label: "Caixa", icon: Banknote },
       { to: "/financeiro", label: "Financeiro", icon: Wallet, financeiroOnly: true },
       { to: "/relatorios", label: "Relatórios", icon: BarChart3 },
+      { to: "/crm", label: "CRM & WhatsApp", icon: MessageSquareText },
       { to: "/auditoria", label: "Auditoria", icon: ShieldCheck, adminOnly: true },
       { to: "/usuarios", label: "Usuários & Equipe", icon: Users, adminOnly: true },
       { to: "/configuracoes", label: "Configurações", icon: Settings, adminOnly: true },
@@ -113,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (item.adminOnly) return false;
     if (item.financeiroOnly) return false;
     if (item.funcionarioHidden) return false;
-    const gestaoRoutes = ["/caixa", "/financeiro", "/relatorios", "/auditoria", "/usuarios", "/configuracoes"];
+    const gestaoRoutes = ["/caixa", "/financeiro", "/relatorios", "/crm", "/auditoria", "/usuarios", "/configuracoes"];
     if (gestaoRoutes.includes(item.to)) return false;
     
     return true;

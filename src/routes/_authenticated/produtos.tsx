@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import { useMemo, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,6 +30,7 @@ import {
   Upload,
   Image as ImageIcon,
   Loader2,
+  Blocks,
 } from "lucide-react";
 import {
   uploadImagemProdutoArquivo,
@@ -107,6 +108,7 @@ function ProdutosPage() {
 
 function ProdutosTab() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [editing, setEditing] = useState<Produto | null>(null);
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
@@ -200,8 +202,16 @@ function ProdutosTab() {
                     <div className="text-xs text-muted-foreground mt-0.5">{p.categoria?.nome ?? "Sem categoria"}</div>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" onClick={() => editar(p)}><Pencil className="size-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => excluir(p)}><Trash2 className="size-4 text-destructive" /></Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Composição (Ficha técnica)"
+                      onClick={() => navigate({ to: "/composicao", search: { produtoId: p.id } })}
+                    >
+                      <Blocks className="size-4 text-primary" />
+                    </Button>
+                    <Button size="icon" variant="ghost" title="Editar produto" onClick={() => editar(p)}><Pencil className="size-4" /></Button>
+                    <Button size="icon" variant="ghost" title="Excluir produto" onClick={() => excluir(p)}><Trash2 className="size-4 text-destructive" /></Button>
                   </div>
                 </div>
                 {p.descricao && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{p.descricao}</p>}
@@ -290,8 +300,16 @@ function ProdutosTab() {
                     </td>
                     <td className="px-3">
                       <div className="flex gap-1 justify-end">
-                        <Button size="icon" variant="ghost" onClick={() => editar(p)}><Pencil className="size-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => excluir(p)}><Trash2 className="size-4 text-destructive" /></Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="Composição (Ficha técnica)"
+                          onClick={() => navigate({ to: "/composicao", search: { produtoId: p.id } })}
+                        >
+                          <Blocks className="size-4 text-primary" />
+                        </Button>
+                        <Button size="icon" variant="ghost" title="Editar produto" onClick={() => editar(p)}><Pencil className="size-4" /></Button>
+                        <Button size="icon" variant="ghost" title="Excluir produto" onClick={() => excluir(p)}><Trash2 className="size-4 text-destructive" /></Button>
                       </div>
                     </td>
                   </tr>
@@ -312,6 +330,7 @@ function ProdutosTab() {
 
 function ProdutoDialog({ open, onOpenChange, produto }: { open: boolean; onOpenChange: (b: boolean) => void; produto: Produto | null }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImg, setUploadingImg] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -559,6 +578,48 @@ function ProdutoDialog({ open, onOpenChange, produto }: { open: boolean; onOpenC
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Atalho para Composição do Produto */}
+          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-semibold flex items-center gap-1.5">
+                <Blocks className="size-4 text-primary" />
+                Composição & Ficha Técnica
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {produto
+                  ? "Defina os insumos e itens de estoque que compõem este produto"
+                  : "Salve o produto primeiro para gerenciar sua composição"}
+              </p>
+            </div>
+            {produto ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5 shrink-0 hover:border-primary hover:text-primary transition-colors font-medium"
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate({ to: "/composicao", search: { produtoId: produto.id } });
+                }}
+              >
+                <Blocks className="size-4 text-primary" />
+                Composição
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled
+                className="gap-1.5 shrink-0 opacity-50 cursor-not-allowed"
+                title="Salve o produto para configurar a composição"
+              >
+                <Blocks className="size-4" />
+                Composição
+              </Button>
+            )}
           </div>
 
           <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></div>

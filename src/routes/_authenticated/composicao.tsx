@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -16,6 +16,9 @@ import { Blocks, Plus, Trash2, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/composicao")({
   head: () => ({ meta: [{ title: "Composição — FitLife" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    produtoId: typeof search.produtoId === "string" ? search.produtoId : undefined,
+  }),
   component: ComposicaoPage,
 });
 
@@ -68,6 +71,8 @@ function useItens() {
 
 function ProdutosComposicao() {
   const qc = useQueryClient();
+  const search = Route.useSearch();
+  const produtoId = search?.produtoId;
   const [busca, setBusca] = useState("");
   const { data: produtos = [] } = useQuery({
     queryKey: ["produtos-comp"],
@@ -76,9 +81,16 @@ function ProdutosComposicao() {
       return data ?? [];
     },
   });
-  const [selId, setSelId] = useState<string | null>(null);
+  const [selId, setSelId] = useState<string | null>(produtoId ?? null);
+
+  useEffect(() => {
+    if (produtoId && produtos.some((p) => p.id === produtoId)) {
+      setSelId(produtoId);
+    }
+  }, [produtoId, produtos]);
+
   const filtrados = produtos.filter(p => p.nome.toLowerCase().includes(busca.toLowerCase()));
-  const selecionado = produtos.find(p => p.id === selId) ?? filtrados[0];
+  const selecionado = produtos.find(p => p.id === (selId ?? produtoId)) ?? filtrados[0];
 
   return (
     <div className="grid md:grid-cols-[280px_1fr] gap-4">
