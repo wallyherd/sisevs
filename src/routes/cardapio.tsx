@@ -82,6 +82,9 @@ type Produto = {
   imagem_url?: string | null;
   group_name?: string;
   option_groups?: GrupoOpcoes[];
+  controla_estoque?: boolean;
+  estoque_item_id?: string | null;
+  estoque_item?: { quantidade_atual: number } | null;
 };
 
 type ItemCarrinho = {
@@ -320,7 +323,7 @@ function CardapioDigitalPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("produtos")
-        .select("*, categoria:categorias_produtos(nome), produto_sabores(sabor_id), produto_adicionais(adicional_id)")
+        .select("*, categoria:categorias_produtos(nome), produto_sabores(sabor_id), produto_adicionais(adicional_id), estoque_item:estoque_itens(quantidade_atual)")
         .eq("ativo", true)
         .eq("aparece_no_pedido", true)
         .order("nome");
@@ -395,6 +398,8 @@ function CardapioDigitalPage() {
         descricao: limparDescricao(pb.descricao),
         imagem_url: customImg || match?.image || null,
         option_groups: match?.optionGroups,
+        controla_estoque: (pb as any).controla_estoque,
+        estoque_item: (pb as any).estoque_item,
       };
     });
 
@@ -609,42 +614,44 @@ function CardapioDigitalPage() {
     const nomesNoCarrinho = new Set(
       carrinho.map((c) => c.produto.nome.toLowerCase().trim())
     );
+    const idsNoCarrinho = new Set(carrinho.map((c) => c.produto.id));
 
-    // Prioridades clássicas de upsell do EVS conforme solicitado
-    const prioridades = [
-      "brigadeiro proteico (1 unid)",
-      "cápsulas de multivitaminas (2 und)",
-      "cápsulas de fiberbond (3 und)",
-      "pão de mel proteico",
-      "donuts proteico (1 unid)",
-      "ômega 3 (1 und)",
-      "xtra-cal (2 und)",
-      "água com gás",
-      "água sem gás",
-      "fiber concentrate (dose pronta)",
-      "suco detox funcional",
-      "barra de proteína",
-    ];
-
-    // Produtos disponíveis que ainda não foram adicionados à sacola
+    // Produtos disponíveis que:
+    // 1. Estão ativos e têm preço de até R$ 10,00
+    // 2. Não estão no carrinho
+    // 3. Têm estoque disponível
     const disponiveis = produtos.filter((p) => {
-      const n = p.nome.toLowerCase().trim();
-      return p.ativo && !nomesNoCarrinho.has(n);
+      if (!p.ativo) return false;
+      if (typeof p.preco !== "number" || p.preco <= 0 || p.preco > 10) return false;
+
+      const nomeLimpo = p.nome.toLowerCase().trim();
+      if (nomesNoCarrinho.has(nomeLimpo) || idsNoCarrinho.has(p.id)) return false;
+
+      // Validação de estoque
+      if (p.controla_estoque === false) {
+        return true;
+      }
+      if (p.estoque_item) {
+        const qtd = Number(p.estoque_item.quantidade_atual);
+        return !isNaN(qtd) && qtd > 0;
+      }
+      if (p.controla_estoque === true) {
+        return false;
+      }
+
+      return true;
     });
 
-    const ordenados = [...disponiveis].sort((a, b) => {
-      const nomeA = a.nome.toLowerCase().trim();
-      const nomeB = b.nome.toLowerCase().trim();
-      const idxA = prioridades.findIndex((pr) => nomeA.includes(pr) || pr.includes(nomeA));
-      const idxB = prioridades.findIndex((pr) => nomeB.includes(pr) || pr.includes(nomeB));
+    if (disponiveis.length === 0) return [];
 
-      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-      if (idxA !== -1) return -1;
-      if (idxB !== -1) return 1;
-      return a.preco - b.preco;
-    });
+    // Embaralhamento aleatório (Fisher-Yates) para que a sugestão seja variada e dinâmica
+    const embaralhados = [...disponiveis];
+    for (let i = embaralhados.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [embaralhados[i], embaralhados[j]] = [embaralhados[j], embaralhados[i]];
+    }
 
-    return ordenados.slice(0, 3);
+    return embaralhados.slice(0, 1);
   }, [produtos, carrinho]);
 
   function gerarFraseSugestao(prod: Produto): string {
@@ -1621,7 +1628,7 @@ function CardapioDigitalPage() {
                     </div>
 
                     <div className="space-y-2.5">
-                      {sugestoesComplementares.slice(0, 2).map((sug) => {
+                      {sugestoesComplementares.map((sug) => {
                         const frase = gerarFraseSugestao(sug);
                         return (
                           <div
@@ -1865,25 +1872,27 @@ function CardapioDigitalPage() {
                 <span className="truncate">Pedir pelo WhatsApp ({ESTABELECIMENTO.telefoneFormatado})</span>
               </Button>
 
-              {/* Botão Secundário: Lançar na Comanda EVS */}
-              <Button
-                onClick={finalizarPedido}
-                disabled={enviandoPedido}
-                variant="outline"
-                className="w-full border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm py-2.5 h-auto rounded-xl flex items-center justify-center gap-2 shadow-2xs whitespace-normal text-center leading-snug transition-transform active:scale-[0.99]"
-              >
-                {enviandoPedido ? (
-                  <div className="flex items-center gap-2">
-                    <div className="size-3.5 border-2 border-emerald-600 border-t-transparent animate-spin rounded-full" />
-                    <span>Enviando para a cozinha...</span>
-                  </div>
-                ) : (
-                  <>
-                    <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
-                    <span className="truncate">Lançar no Sistema EVS (Cozinha)</span>
-                  </>
-                )}
-              </Button>
+              {/* Botão Secundário: Pedir Presencial (Apenas visível quando for "No EVS" ou "Balcão") */}
+              {(tipoEntrega === "local" || tipoEntrega === "balcao") && (
+                <Button
+                  onClick={finalizarPedido}
+                  disabled={enviandoPedido}
+                  variant="outline"
+                  className="w-full border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm py-2.5 h-auto rounded-xl flex items-center justify-center gap-2 shadow-2xs whitespace-normal text-center leading-snug transition-transform active:scale-[0.99]"
+                >
+                  {enviandoPedido ? (
+                    <div className="flex items-center gap-2">
+                      <div className="size-3.5 border-2 border-emerald-600 border-t-transparent animate-spin rounded-full" />
+                      <span>Enviando para a cozinha...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
+                      <span className="truncate">Pedir Presencial</span>
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           )}
         </SheetContent>
