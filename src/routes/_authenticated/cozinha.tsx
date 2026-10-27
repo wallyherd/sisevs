@@ -31,12 +31,16 @@ type ItemCozinha = {
   entregue_em: string | null;
   rodada: number;
   pedido?: {
+    id?: string;
     numero: number;
     status_comanda: string;
     cliente_nome_rapido: string | null;
     aberta_em?: string;
     data_hora?: string;
+    created_at?: string;
+    observacoes?: string | null;
     cliente: { nome: string; telefone: string | null } | null;
+    mesa?: { id: string; numero: string } | null;
   } | null;
 };
 
@@ -54,7 +58,7 @@ function CozinhaPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pedido_itens")
-        .select("id,pedido_id,nome_produto,quantidade,sabor,adicionais,observacoes,observacoes_cozinha,status_preparo,enviado_cozinha_em,preparo_iniciado_em,pronto_em,entregue_em,rodada,pedido:pedidos!inner(numero,status_comanda,cliente_nome_rapido,aberta_em,data_hora,cliente:clientes(nome,telefone))")
+        .select("id,pedido_id,nome_produto,quantidade,sabor,adicionais,observacoes,observacoes_cozinha,status_preparo,enviado_cozinha_em,preparo_iniciado_em,pronto_em,entregue_em,rodada,pedido:pedidos!inner(id,numero,status_comanda,cliente_nome_rapido,aberta_em,data_hora,created_at,observacoes,cliente:clientes(nome,telefone),mesa:mesas(id,numero))")
         .eq("envia_para_cozinha", true)
         .in("status_preparo", ["novo", "em_preparo", "pronto"])
         .order("enviado_cozinha_em", { ascending: true, nullsFirst: true });
@@ -141,13 +145,39 @@ function CozinhaPage() {
                   const idadeMin = enviado && !isNaN(enviado.getTime()) ? (Date.now() - enviado.getTime()) / 60000 : 0;
                   const urgente = idadeMin > 10 && it.status_preparo !== "pronto";
                   const nome = it.pedido?.cliente?.nome ?? it.pedido?.cliente_nome_rapido ?? "Balcão";
+                  const mesaNumero =
+                    it.pedido?.mesa?.numero ||
+                    (it.pedido?.observacoes?.match(/Mesa:\s*([^|)\n]+)/i)?.[1]?.trim());
+                  const mesaLabel = mesaNumero
+                    ? (mesaNumero.toLowerCase().startsWith("mesa") ? mesaNumero : `Mesa ${mesaNumero}`)
+                    : "Balcão";
+
                   return (
                     <Card key={it.id} className={"p-3 border-l-4 " + (urgente ? "border-l-destructive" : tone)}>
-                      <div className="flex items-start justify-between mb-1.5">
-                        <div className="text-base font-bold">#{it.pedido?.numero ?? "?"} <span className="text-xs font-normal text-muted-foreground">· Rod. {it.rodada ?? 1}</span></div>
-                        <div className="flex gap-2 items-center">
+                      <div className="flex items-start justify-between mb-1.5 gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-base font-bold">#{it.pedido?.numero ?? "?"}</span>
+                          <span className="text-xs font-normal text-muted-foreground">· Rod. {it.rodada ?? 1}</span>
+                          <Badge
+                            variant={mesaNumero ? "default" : "secondary"}
+                            className={
+                              mesaNumero
+                                ? "bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs dark:bg-amber-950 dark:text-amber-200"
+                                : "text-xs font-medium"
+                            }
+                          >
+                            {mesaLabel}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-1.5 items-center shrink-0">
                           {it.pedido && (
-                            <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" onClick={() => printTicket(it.pedido!, [it], 'cozinha')}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="size-6 text-muted-foreground hover:text-foreground" 
+                              title="Imprimir ticket da cozinha"
+                              onClick={() => printTicket(it.pedido!, [it], 'cozinha')}
+                            >
                               <Printer className="size-3.5" />
                             </Button>
                           )}
@@ -166,7 +196,14 @@ function CozinhaPage() {
                           <CozinhaTimer start={it.preparo_iniciado_em} end={it.pronto_em} />
                         )}
                       </div>
-                      <div className="text-sm font-medium mb-1.5">{nome}</div>
+                      <div className="text-sm font-medium mb-1.5 flex items-center justify-between gap-2">
+                        <span className="truncate">{nome}</span>
+                        {mesaNumero && (
+                          <span className="text-xs font-bold text-amber-800 dark:text-amber-300 shrink-0">
+                            {mesaLabel}
+                          </span>
+                        )}
+                      </div>
                       <div className="border-y border-border py-1.5 mb-2 text-sm">
                         <div className="font-semibold">{it.quantidade}× {it.nome_produto}</div>
                         {it.sabor && <div className="text-xs text-muted-foreground">• {it.sabor}</div>}

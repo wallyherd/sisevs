@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { brl } from "@/lib/format";
 import { toast } from "sonner";
@@ -44,6 +44,7 @@ import {
   PRODUTOS_EVS,
   GrupoOpcoes,
 } from "@/data/cardapio-data";
+import { extrairImagemDeDescricao, limparDescricao } from "@/lib/upload-produto-imagem";
 
 import { z } from "zod";
 
@@ -388,9 +389,11 @@ function CardapioDigitalPage() {
       const match = PRODUTOS_EVS.find(
         (p) => p.name.toLowerCase() === pb.nome.toLowerCase() || pb.nome.toLowerCase().includes(p.name.toLowerCase())
       );
+      const customImg = (pb as any).imagem_url || extrairImagemDeDescricao(pb.descricao);
       return {
         ...pb,
-        imagem_url: pb.imagem_url || match?.image || null,
+        descricao: limparDescricao(pb.descricao),
+        imagem_url: customImg || match?.image || null,
         option_groups: match?.optionGroups,
       };
     });
@@ -599,6 +602,107 @@ function CardapioDigitalPage() {
     [carrinho]
   );
 
+  // ─────────────────────── SUGESTÕES COMPLEMENTARES (UPSELL / ORDER BUMP) ───────────────────────
+  const sugestoesComplementares = useMemo(() => {
+    if (carrinho.length === 0) return [];
+
+    const nomesNoCarrinho = new Set(
+      carrinho.map((c) => c.produto.nome.toLowerCase().trim())
+    );
+
+    // Prioridades clássicas de upsell do EVS conforme solicitado
+    const prioridades = [
+      "brigadeiro proteico (1 unid)",
+      "cápsulas de multivitaminas (2 und)",
+      "cápsulas de fiberbond (3 und)",
+      "pão de mel proteico",
+      "donuts proteico (1 unid)",
+      "ômega 3 (1 und)",
+      "xtra-cal (2 und)",
+      "água com gás",
+      "água sem gás",
+      "fiber concentrate (dose pronta)",
+      "suco detox funcional",
+      "barra de proteína",
+    ];
+
+    // Produtos disponíveis que ainda não foram adicionados à sacola
+    const disponiveis = produtos.filter((p) => {
+      const n = p.nome.toLowerCase().trim();
+      return p.ativo && !nomesNoCarrinho.has(n);
+    });
+
+    const ordenados = [...disponiveis].sort((a, b) => {
+      const nomeA = a.nome.toLowerCase().trim();
+      const nomeB = b.nome.toLowerCase().trim();
+      const idxA = prioridades.findIndex((pr) => nomeA.includes(pr) || pr.includes(nomeA));
+      const idxB = prioridades.findIndex((pr) => nomeB.includes(pr) || pr.includes(nomeB));
+
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.preco - b.preco;
+    });
+
+    return ordenados.slice(0, 3);
+  }, [produtos, carrinho]);
+
+  function gerarFraseSugestao(prod: Produto): string {
+    const nomeLower = prod.nome.toLowerCase();
+    const precoFormatado = brl(prod.preco);
+
+    if (
+      nomeLower.includes("brigadeiro") ||
+      nomeLower.includes("pão de mel") ||
+      nomeLower.includes("donut") ||
+      nomeLower.includes("doce")
+    ) {
+      return `com mais ${precoFormatado} leve "${prod.nome}". Quer?`;
+    }
+    if (
+      nomeLower.includes("cápsula") ||
+      nomeLower.includes("multivitamina") ||
+      nomeLower.includes("fiberbond") ||
+      nomeLower.includes("ômega") ||
+      nomeLower.includes("xtra-cal")
+    ) {
+      return `Deseja acrescentar "${prod.nome}" por apenas +${precoFormatado} para acompanhar?`;
+    }
+    if (
+      nomeLower.includes("água") ||
+      nomeLower.includes("chá") ||
+      nomeLower.includes("drink") ||
+      nomeLower.includes("suco")
+    ) {
+      return `Que tal acrescentar "${prod.nome}" por apenas +${precoFormatado} para acompanhar sua refeição?`;
+    }
+    return `Leve também "${prod.nome}" por apenas +${precoFormatado}. Deseja adicionar?`;
+  }
+
+  function adicionarSugestaoAoCarrinho(prod: Produto) {
+    const temOpcoesObrigatorias =
+      prod.option_groups?.some((og) => og.min > 0) ||
+      (prod.permite_sabor && !prod.produto_sabores?.length);
+
+    if (temOpcoesObrigatorias) {
+      abrirModalProduto(prod);
+      return;
+    }
+
+    const novoItem: ItemCarrinho = {
+      id: `${prod.id}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      produto: prod,
+      quantidade: 1,
+      sabor: null,
+      adicionais: [],
+      observacoes: "",
+      precoTotalUnitario: prod.preco,
+    };
+
+    setCarrinho((prev) => [...prev, novoItem]);
+    toast.success(`✨ ${prod.nome} adicionado à sacola!`);
+  }
+
   // Pedido WhatsApp
   function pedirPeloWhatsApp() {
     if (carrinho.length === 0) {
@@ -732,6 +836,10 @@ function CardapioDigitalPage() {
 
       const pedidoId = (comandaAberta as any).id;
       const pedidoNumero = (comandaAberta as any).numero;
+
+      if (clienteNome.trim() && pedidoId) {
+        await (supabase.from("pedidos") as any).update({ cliente_nome_rapido: clienteNome.trim() }).eq("id", pedidoId);
+      }
 
       // 4. Adicionar itens à comanda via RPC adicionar_item_comanda
       for (const item of carrinho) {
@@ -1144,7 +1252,7 @@ function CardapioDigitalPage() {
       </main>
 
       {/* ─────────────────────── BARRA FLUTUANTE DE CHECKOUT ─────────────────────── */}
-      {carrinho.length > 0 && (
+      {carrinho.length > 0 && !carrinhoAberto && (
         <div className="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-40">
           <div className="bg-white/95 border border-slate-200 rounded-2xl p-3.5 shadow-xl shadow-slate-900/10 flex items-center justify-between gap-3 backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-300">
             <div className="flex items-center gap-3">
@@ -1399,9 +1507,9 @@ function CardapioDigitalPage() {
       <Sheet open={carrinhoAberto} onOpenChange={setCarrinhoAberto}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-md bg-white border-l border-slate-200 text-slate-800 p-0 flex flex-col justify-between shadow-2xl"
+          className="w-full sm:max-w-md bg-white border-l border-slate-200 text-slate-800 p-0 flex flex-col justify-between shadow-2xl h-full max-h-screen overflow-hidden"
         >
-          <SheetHeader className="p-5 border-b border-slate-100 flex flex-row items-center justify-between space-y-0">
+          <SheetHeader className="p-4 sm:p-5 border-b border-slate-100 flex flex-row items-center justify-between space-y-0 shrink-0">
             <div className="flex items-center gap-2">
               <ShoppingCart className="size-5 text-emerald-600" />
               <SheetTitle className="text-base font-heading font-bold text-slate-900">
@@ -1410,7 +1518,7 @@ function CardapioDigitalPage() {
             </div>
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5 space-y-5 custom-scrollbar min-h-0">
             {carrinho.length === 0 ? (
               <div className="py-24 text-center space-y-3">
                 <ShoppingCart className="size-12 mx-auto text-slate-300" />
@@ -1498,6 +1606,72 @@ function CardapioDigitalPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* ────────────────── SUGESTÕES COMPLEMENTARES (ORDER BUMP / UPSELL) ────────────────── */}
+                {sugestoesComplementares.length > 0 && (
+                  <div className="space-y-3 pt-3 border-t border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700">
+                        <Sparkles className="size-3.5 text-amber-500 fill-amber-400" />
+                        <span>Sugestão Especial</span>
+                      </div>
+                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[10px] font-bold px-2 py-0.5">
+                        ⚡ Oferta rápida
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {sugestoesComplementares.slice(0, 2).map((sug) => {
+                        const frase = gerarFraseSugestao(sug);
+                        return (
+                          <div
+                            key={sug.id}
+                            className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/80 via-white to-amber-50/40 border border-emerald-200/90 shadow-2xs space-y-2.5 transition-all hover:border-emerald-300"
+                          >
+                            <div className="flex items-start gap-3">
+                              {sug.imagem_url ? (
+                                <img
+                                  src={sug.imagem_url}
+                                  alt={sug.nome}
+                                  className="size-12 rounded-xl object-cover shrink-0 border border-slate-200 shadow-2xs"
+                                />
+                              ) : (
+                                <div className="size-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
+                                  <Sparkles className="size-5" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-slate-800 leading-snug">
+                                  {frase}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs font-bold text-emerald-700">
+                                    +{brl(sug.preco)}
+                                  </span>
+                                  {sug.categoria?.nome && (
+                                    <span className="text-[10px] text-slate-500 bg-slate-100/90 px-1.5 py-0.5 rounded-md font-medium truncate max-w-[120px]">
+                                      {sug.categoria.nome}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => adicionarSugestaoAoCarrinho(sug)}
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 rounded-xl gap-1.5 shadow-2xs transition-transform active:scale-[0.99]"
+                            >
+                              <Plus className="size-3.5" />
+                              <span>Sim! Quero adicionar (+{brl(sug.preco)})</span>
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Tipo de Consumo */}
                 <div className="space-y-3 border-t border-slate-200 pt-4">
@@ -1668,27 +1842,27 @@ function CardapioDigitalPage() {
             )}
           </div>
 
-          {/* Rodapé com 2 Ações: WhatsApp e EVS Direto */}
+          {/* Rodapé Fixo com Totais e Botões 100% Responsivos e Empilhados Verticalmente */}
           {carrinho.length > 0 && (
-            <SheetFooter className="p-5 border-t border-slate-100 bg-slate-50/90 space-y-2.5 sm:space-y-2.5 flex-col">
-              <div className="w-full space-y-1">
+            <div className="p-4 sm:p-5 border-t border-slate-200 bg-white/95 backdrop-blur-md space-y-3 w-full shrink-0 shadow-lg">
+              <div className="w-full space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>Subtotal</span>
-                  <span>{brl(valorTotalCarrinho)}</span>
+                  <span className="font-semibold text-slate-700">{brl(valorTotalCarrinho)}</span>
                 </div>
-                <div className="flex items-center justify-between text-base font-black text-slate-900 font-heading">
+                <div className="flex items-center justify-between text-base font-black text-slate-900 font-heading pt-1 border-t border-slate-200/60">
                   <span>Total do Pedido</span>
-                  <span className="text-emerald-700">{brl(valorTotalCarrinho)}</span>
+                  <span className="text-emerald-700 text-lg">{brl(valorTotalCarrinho)}</span>
                 </div>
               </div>
 
               {/* Botão Principal: WhatsApp */}
               <Button
                 onClick={pedirPeloWhatsApp}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-11 rounded-xl gap-2 shadow-xs"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm py-2.5 h-auto rounded-xl flex items-center justify-center gap-2 shadow-sm whitespace-normal text-center leading-snug transition-transform active:scale-[0.99]"
               >
-                <MessageCircle className="size-4" />
-                <span>Pedir pelo WhatsApp ({ESTABELECIMENTO.telefoneFormatado})</span>
+                <MessageCircle className="size-4 shrink-0" />
+                <span className="truncate">Pedir pelo WhatsApp ({ESTABELECIMENTO.telefoneFormatado})</span>
               </Button>
 
               {/* Botão Secundário: Lançar na Comanda EVS */}
@@ -1696,7 +1870,7 @@ function CardapioDigitalPage() {
                 onClick={finalizarPedido}
                 disabled={enviandoPedido}
                 variant="outline"
-                className="w-full border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs h-10 rounded-xl gap-2 shadow-2xs"
+                className="w-full border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm py-2.5 h-auto rounded-xl flex items-center justify-center gap-2 shadow-2xs whitespace-normal text-center leading-snug transition-transform active:scale-[0.99]"
               >
                 {enviandoPedido ? (
                   <div className="flex items-center gap-2">
@@ -1705,12 +1879,12 @@ function CardapioDigitalPage() {
                   </div>
                 ) : (
                   <>
-                    <CheckCircle2 className="size-4 text-emerald-600" />
-                    <span>Lançar no Sistema EVS (Cozinha)</span>
+                    <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
+                    <span className="truncate">Lançar no Sistema EVS (Cozinha)</span>
                   </>
                 )}
               </Button>
-            </SheetFooter>
+            </div>
           )}
         </SheetContent>
       </Sheet>

@@ -31,6 +31,7 @@ function NovaComandaPage() {
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [nomeRapido, setNomeRapido] = useState("");
   const [telRapido, setTelRapido] = useState("");
+  const [nomeBalcao, setNomeBalcao] = useState("");
   const [obs, setObs] = useState("");
   const [abrindo, setAbrindo] = useState(false);
   const [mesaSelecionada, setMesaSelecionada] = useState<string>(mesaId || "nenhuma");
@@ -61,10 +62,22 @@ function NovaComandaPage() {
       toast.error("Informe ao menos o nome ou o telefone");
       return;
     }
+    if (modo === "balcao" && !nomeBalcao.trim()) {
+      toast.error("Informe o nome do cliente para a comanda");
+      return;
+    }
+
+    const clienteNomeFinal =
+      modo === "cadastrado"
+        ? null
+        : modo === "rapido"
+        ? (nomeRapido.trim() || null)
+        : nomeBalcao.trim();
+
     setAbrindo(true);
     const { data, error } = await supabase.rpc("abrir_comanda", {
       _cliente_id: modo === "cadastrado" ? cliente!.id : (null as any),
-      _cliente_nome: modo === "rapido" ? nomeRapido.trim() : modo === "balcao" ? "Consumidor balcão" : (null as any),
+      _cliente_nome: clienteNomeFinal as any,
       _cliente_telefone: modo === "rapido" ? telRapido.replace(/\D/g, "") : (null as any),
       _observacoes: (obs || null) as any,
       _mesa_id: mesaSelecionada !== "nenhuma" ? mesaSelecionada : null,
@@ -75,14 +88,33 @@ function NovaComandaPage() {
       return;
     }
     const ped = data as any;
+
+    if (clienteNomeFinal && ped?.id) {
+      await (supabase.from("pedidos") as any)
+        .update({ cliente_nome_rapido: clienteNomeFinal })
+        .eq("id", ped.id);
+    }
+
     toast.success(`Comanda #${ped.numero} aberta`);
-    navigate({ to: "/pedidos/$id" as any, params: { id: ped.id } as any });
+    navigate({
+      to: "/pedidos/$id" as any,
+      params: { id: ped.id } as any,
+      search: mesaSelecionada !== "nenhuma" ? ({ mesa: mesaSelecionada } as any) : undefined,
+    });
+  }
+
+  function voltar() {
+    if (mesaId) {
+      navigate({ to: "/pedidos" as any, search: { tab: "mesas", mesa: mesaId } as any });
+    } else {
+      navigate({ to: "/pedidos" as any });
+    }
   }
 
   return (
     <>
       <div className="flex items-center gap-2 mb-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/pedidos" as any })}>
+        <Button variant="ghost" size="icon" onClick={voltar}>
           <ArrowLeft className="size-4" />
         </Button>
         <div>
@@ -126,8 +158,20 @@ function NovaComandaPage() {
             )}
 
             {modo === "balcao" && (
-              <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                Comanda em nome de <strong className="text-foreground">Consumidor balcão</strong> — sem vínculo com cadastro.
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="nome-balcao">Nome do cliente <span className="text-destructive">*</span></Label>
+                  <Input 
+                    id="nome-balcao"
+                    value={nomeBalcao} 
+                    onChange={(e) => setNomeBalcao(e.target.value)} 
+                    placeholder="Ex.: Maria Silva" 
+                    autoFocus
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Preencha o nome do cliente para identificação da comanda no balcão e na mesa.
+                </p>
               </div>
             )}
 

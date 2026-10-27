@@ -1,29 +1,46 @@
 export function printTicket(pedido: any, itens: any[], tipo: 'cozinha' | 'caixa' = 'caixa') {
-  const data = new Date(pedido.aberta_em || pedido.created_at).toLocaleString('pt-BR');
-  
+  const rawDate = pedido.aberta_em || pedido.data_hora || pedido.created_at;
+  const dateObj = rawDate ? new Date(rawDate) : new Date();
+  const data = !isNaN(dateObj.getTime())
+    ? dateObj.toLocaleString('pt-BR')
+    : new Date().toLocaleString('pt-BR');
+
+  const mesaIdentificador =
+    pedido.mesa?.numero ||
+    pedido.mesa_numero ||
+    (typeof pedido.mesa === 'string' ? pedido.mesa : null) ||
+    (pedido.observacoes?.match(/Mesa:\s*([^|)\n]+)/i)?.[1]?.trim());
+
+  const mesaTexto = mesaIdentificador
+    ? (mesaIdentificador.toLowerCase().startsWith('mesa') ? mesaIdentificador : `Mesa ${mesaIdentificador}`)
+    : 'Balcão';
+
+  const clienteNome = pedido.cliente?.nome || pedido.cliente_nome_rapido || 'Balcão';
+
   let html = `
     <html>
       <head>
-        <title>Ticket #${pedido.numero}</title>
+        <title>Ticket #${pedido.numero ?? ''}</title>
         <style>
           @page { margin: 0; }
           body { 
             font-family: monospace; 
-            font-size: 12px; 
+            font-size: 13px; 
             width: 80mm; 
             margin: 0 auto; 
             padding: 10px;
             color: #000;
+            line-height: 1.35;
           }
           h1, h2, h3, p { margin: 2px 0; text-align: center; }
-          .divider { border-bottom: 1px dashed #000; margin: 5px 0; }
+          .divider { border-bottom: 1px dashed #000; margin: 6px 0; }
           .left { text-align: left; }
           .right { text-align: right; }
           .flex-between { display: flex; justify-content: space-between; }
-          .item-row { display: flex; justify-content: space-between; margin-bottom: 3px; }
-          .item-name { flex: 1; padding-right: 5px; }
+          .item-row { display: flex; justify-content: space-between; margin-top: 4px; margin-bottom: 2px; }
+          .item-name { flex: 1; padding-right: 5px; font-weight: bold; }
           .bold { font-weight: bold; }
-          .obs { font-size: 11px; font-style: italic; margin-left: 10px; }
+          .obs { font-size: 11px; margin-left: 8px; color: #111; }
           @media print {
             body { width: 100%; padding: 0; }
           }
@@ -31,15 +48,17 @@ export function printTicket(pedido: any, itens: any[], tipo: 'cozinha' | 'caixa'
       </head>
       <body>
         <h2>FitLife</h2>
-        <p>Pedido #${pedido.numero}</p>
+        <p class="bold" style="font-size: 14px;">Pedido #${pedido.numero ?? '—'}</p>
         <p>${data}</p>
         
         <div class="divider"></div>
         
         <p class="left bold">
-          Cliente: ${pedido.cliente?.nome || pedido.cliente_nome_rapido || 'Balcão'}
+          Cliente: ${clienteNome}
         </p>
-        ${pedido.mesa ? `<p class="left bold">Mesa: ${pedido.mesa.numero}</p>` : ''}
+        <p class="left bold">
+          ${mesaIdentificador ? `Mesa: ${mesaTexto}` : `Atendimento: Balcão`}
+        </p>
         
         <div class="divider"></div>
         
@@ -49,19 +68,37 @@ export function printTicket(pedido: any, itens: any[], tipo: 'cozinha' | 'caixa'
   `;
 
   itens.forEach(item => {
-    // Para cozinha, podemos não mostrar o preço, mas por padrão mostramos
-    const precoHtml = tipo === 'caixa' 
-      ? `<span>${(item.preco_unitario * item.quantidade).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>` 
+    const nome = item.nome_produto || item.produto?.nome || item.nome || 'Produto';
+    const precoHtml = tipo === 'caixa' && item.preco_unitario
+      ? `<span>${(Number(item.preco_unitario) * Number(item.quantidade)).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>` 
       : '';
       
     html += `
       <div class="item-row">
-        <span class="item-name">${item.quantidade}x ${item.produto?.nome || 'Produto'}</span>
+        <span class="item-name">${item.quantidade}x ${nome}</span>
         ${precoHtml}
       </div>
     `;
+
+    if (item.rodada && tipo === 'cozinha') {
+      html += `<div class="obs left bold" style="font-size: 11px;">[Rodada ${item.rodada}]</div>`;
+    }
+    if (item.sabor) {
+      html += `<div class="obs left">• ${item.sabor}</div>`;
+    }
+    if (Array.isArray(item.adicionais) && item.adicionais.length > 0) {
+      const adicText = item.adicionais.map((a: any) => {
+        if (typeof a === 'string') return a;
+        const preco = Number(a.preco) || 0;
+        return `${a.nome || a}${preco > 0 && tipo === 'caixa' ? ` (+${preco.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})` : ''}`;
+      }).join(', ');
+      html += `<div class="obs left">+ Adicionais: ${adicText}</div>`;
+    }
     if (item.observacoes) {
       html += `<div class="obs left">Obs: ${item.observacoes}</div>`;
+    }
+    if (item.observacoes_cozinha) {
+      html += `<div class="obs left">Obs Cozinha: ${item.observacoes_cozinha}</div>`;
     }
   });
 
@@ -70,11 +107,11 @@ export function printTicket(pedido: any, itens: any[], tipo: 'cozinha' | 'caixa'
         <div class="divider"></div>
   `;
 
-  if (tipo === 'caixa') {
+  if (tipo === 'caixa' && pedido.total !== undefined) {
     html += `
         <div class="flex-between bold" style="font-size: 14px;">
           <span>TOTAL</span>
-          <span>${pedido.total.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
+          <span>${Number(pedido.total).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
         </div>
         <div class="divider"></div>
     `;
@@ -82,7 +119,7 @@ export function printTicket(pedido: any, itens: any[], tipo: 'cozinha' | 'caixa'
 
   if (pedido.observacoes) {
     html += `
-        <div class="left" style="margin-top: 10px;">
+        <div class="left" style="margin-top: 6px;">
           <p class="bold">Observações Gerais:</p>
           <p class="left">${pedido.observacoes}</p>
         </div>
@@ -91,7 +128,7 @@ export function printTicket(pedido: any, itens: any[], tipo: 'cozinha' | 'caixa'
   }
 
   html += `
-        <p style="margin-top: 10px;">${tipo === 'cozinha' ? '*** VIA DA COZINHA ***' : 'Obrigado pela preferência!'}</p>
+        <p style="margin-top: 8px;">${tipo === 'cozinha' ? '*** VIA DA COZINHA ***' : 'Obrigado pela preferência!'}</p>
         <script>
           window.onload = () => {
             window.print();

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,7 +16,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { brl } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Package, Tag, Sparkles, ShieldOff, LayoutGrid, List, ChefHat } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Package,
+  Tag,
+  Sparkles,
+  ShieldOff,
+  LayoutGrid,
+  List,
+  ChefHat,
+  Upload,
+  Image as ImageIcon,
+  Loader2,
+} from "lucide-react";
+import {
+  uploadImagemProdutoArquivo,
+  extrairImagemDeDescricao,
+  limparDescricao,
+  embutirImagemNaDescricao,
+} from "@/lib/upload-produto-imagem";
 
 export const Route = createFileRoute("/_authenticated/produtos")({
   head: () => ({ meta: [{ title: "Produtos — FitLife" }] }),
@@ -39,6 +59,7 @@ type Produto = {
   produto_fechado: boolean;
   permite_sabor: boolean;
   permite_adicionais: boolean;
+  imagem_url?: string | null;
   categoria?: { nome: string } | null;
   produto_sabores?: { sabor_id: string }[];
   produto_adicionais?: { adicional_id: string }[];
@@ -98,7 +119,11 @@ function ProdutosTab() {
         .from("produtos")
         .select("*, categoria:categorias_produtos(nome), produto_sabores(sabor_id), produto_adicionais(adicional_id)")
         .order("nome");
-      return (data ?? []) as unknown as Produto[];
+      return (data ?? []).map((p: any) => ({
+        ...p,
+        imagem_url: p.imagem_url || extrairImagemDeDescricao(p.descricao) || null,
+        descricao: limparDescricao(p.descricao),
+      })) as Produto[];
     },
   });
 
@@ -156,17 +181,32 @@ function ProdutosTab() {
       {viewMode === "grade" ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtrados.map((p) => (
-            <Card key={p.id} className="p-4">
-              <div className="flex items-start justify-between mb-1">
-                <div className="font-heading font-semibold">{p.nome}</div>
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => editar(p)}><Pencil className="size-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => excluir(p)}><Trash2 className="size-4 text-destructive" /></Button>
+            <Card key={p.id} className="p-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-start gap-3 mb-2">
+                  {p.imagem_url ? (
+                    <img
+                      src={p.imagem_url}
+                      alt={p.nome}
+                      className="size-14 rounded-lg object-cover border border-border shrink-0 bg-muted"
+                    />
+                  ) : (
+                    <div className="size-14 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 text-muted-foreground/40">
+                      <ImageIcon className="size-6" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-heading font-semibold leading-tight line-clamp-2">{p.nome}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">{p.categoria?.nome ?? "Sem categoria"}</div>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" onClick={() => editar(p)}><Pencil className="size-4" /></Button>
+                    <Button size="icon" variant="ghost" onClick={() => excluir(p)}><Trash2 className="size-4 text-destructive" /></Button>
+                  </div>
                 </div>
+                {p.descricao && <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{p.descricao}</p>}
               </div>
-              <div className="text-xs text-muted-foreground mb-2">{p.categoria?.nome ?? "Sem categoria"}</div>
-              {p.descricao && <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{p.descricao}</p>}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-2 border-t border-border/40">
                 <div>
                   <div className="text-lg font-bold text-primary">{brl(p.preco)}</div>
                   <div className="text-xs text-muted-foreground">custo {brl(p.custo)}</div>
@@ -185,7 +225,7 @@ function ProdutosTab() {
         <Card className="overflow-hidden">
           {viewMode === "lista" && (
             <div className="bg-muted/50 border-b border-border px-4 py-2 text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
-              Alterações de ativo/visível/cozinha são salvas imediatamente. Use o lápis para editar detalhes.
+              Alterações de ativo/visível/cozinha são salvas imediatamente. Use o lápis para editar detalhes e fotos.
             </div>
           )}
           <div className="overflow-x-auto">
@@ -206,8 +246,23 @@ function ProdutosTab() {
                 {filtrados.map((p) => (
                   <tr key={p.id} className="border-b border-border/60 hover:bg-muted/30 transition-colors">
                     <td className="py-2.5 px-4">
-                      <div className="font-medium">{p.nome}</div>
-                      {p.descricao && <div className="text-[11px] text-muted-foreground truncate max-w-[200px]">{p.descricao}</div>}
+                      <div className="flex items-center gap-2.5">
+                        {p.imagem_url ? (
+                          <img
+                            src={p.imagem_url}
+                            alt={p.nome}
+                            className="size-9 rounded-md object-cover border border-border shrink-0 bg-muted"
+                          />
+                        ) : (
+                          <div className="size-9 rounded-md bg-muted border border-border flex items-center justify-center shrink-0 text-muted-foreground/40">
+                            <ImageIcon className="size-4" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{p.nome}</div>
+                          {p.descricao && <div className="text-[11px] text-muted-foreground truncate max-w-[200px]">{p.descricao}</div>}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-3 text-muted-foreground">{p.categoria?.nome ?? "—"}</td>
                     <td className="px-3 text-right font-semibold text-primary tabular-nums">{brl(p.preco)}</td>
@@ -257,6 +312,10 @@ function ProdutosTab() {
 
 function ProdutoDialog({ open, onOpenChange, produto }: { open: boolean; onOpenChange: (b: boolean) => void; produto: Produto | null }) {
   const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImg, setUploadingImg] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   const { data: categorias = [] } = useQuery({
     queryKey: ["categorias-all"],
     queryFn: async () => (await supabase.from("categorias_produtos").select("*").order("nome")).data ?? [],
@@ -271,7 +330,7 @@ function ProdutoDialog({ open, onOpenChange, produto }: { open: boolean; onOpenC
   });
 
   const [form, setForm] = useState({
-    nome: "", descricao: "", categoria_id: "", preco: "0", custo: "0",
+    nome: "", descricao: "", imagem_url: "", categoria_id: "", preco: "0", custo: "0",
     ativo: true, aparece_no_pedido: true,
     envia_para_cozinha: true, produto_fechado: false,
     permite_sabor: false, permite_adicionais: false,
@@ -280,10 +339,18 @@ function ProdutoDialog({ open, onOpenChange, produto }: { open: boolean; onOpenC
 
   function reset() {
     if (produto) {
+      const rawDesc = produto.descricao ?? "";
+      const img = produto.imagem_url || extrairImagemDeDescricao(rawDesc) || "";
+      const descLimpa = limparDescricao(rawDesc);
       setForm({
-        nome: produto.nome, descricao: produto.descricao ?? "",
-        categoria_id: produto.categoria_id ?? "", preco: String(produto.preco), custo: String(produto.custo),
-        ativo: produto.ativo, aparece_no_pedido: produto.aparece_no_pedido,
+        nome: produto.nome,
+        descricao: descLimpa,
+        imagem_url: img,
+        categoria_id: produto.categoria_id ?? "",
+        preco: String(produto.preco),
+        custo: String(produto.custo),
+        ativo: produto.ativo,
+        aparece_no_pedido: produto.aparece_no_pedido,
         envia_para_cozinha: produto.envia_para_cozinha ?? true,
         produto_fechado: produto.produto_fechado ?? false,
         permite_sabor: produto.permite_sabor ?? false,
@@ -293,7 +360,7 @@ function ProdutoDialog({ open, onOpenChange, produto }: { open: boolean; onOpenC
       });
     } else {
       setForm({
-        nome: "", descricao: "", categoria_id: "", preco: "0", custo: "0",
+        nome: "", descricao: "", imagem_url: "", categoria_id: "", preco: "0", custo: "0",
         ativo: true, aparece_no_pedido: true,
         envia_para_cozinha: true, produto_fechado: false,
         permite_sabor: false, permite_adicionais: false,
@@ -305,44 +372,110 @@ function ProdutoDialog({ open, onOpenChange, produto }: { open: boolean; onOpenC
   // sync when dialog opens
   useMemo(() => { if (open) reset(); /* eslint-disable-next-line */ }, [open, produto?.id]);
 
+  async function handleUploadFoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("A foto deve ter no máximo 10MB");
+      return;
+    }
+
+    setUploadingImg(true);
+    try {
+      const url = await uploadImagemProdutoArquivo(file);
+      setForm((f) => ({ ...f, imagem_url: url }));
+      toast.success("Foto carregada com sucesso!");
+    } catch (err: any) {
+      console.error("Erro upload:", err);
+      toast.error(err?.message || "Não foi possível carregar a imagem");
+    } finally {
+      setUploadingImg(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   async function salvar() {
     if (!form.nome.trim()) { toast.error("Nome obrigatório"); return; }
-    const payload = {
-      nome: form.nome.trim(),
-      descricao: form.descricao || null,
-      categoria_id: form.categoria_id || null,
-      preco: Number(form.preco) || 0,
-      custo: Number(form.custo) || 0,
-      ativo: form.ativo,
-      aparece_no_pedido: form.aparece_no_pedido,
-      envia_para_cozinha: form.envia_para_cozinha,
-      produto_fechado: form.produto_fechado,
-      permite_sabor: form.permite_sabor,
-      permite_adicionais: form.permite_adicionais,
-    };
-    let prodId = produto?.id;
-    if (produto) {
-      const { error } = await supabase.from("produtos").update(payload).eq("id", produto.id);
-      if (error) { toast.error(error.message); return; }
-    } else {
-      const { data, error } = await supabase.from("produtos").insert(payload).select("id").single();
-      if (error || !data) { toast.error(error?.message ?? "Erro"); return; }
-      prodId = data.id;
+    setSaving(true);
+    try {
+      const imgUrl = form.imagem_url.trim();
+      const payloadBase = {
+        nome: form.nome.trim(),
+        categoria_id: form.categoria_id || null,
+        preco: Number(form.preco) || 0,
+        custo: Number(form.custo) || 0,
+        ativo: form.ativo,
+        aparece_no_pedido: form.aparece_no_pedido,
+        envia_para_cozinha: form.envia_para_cozinha,
+        produto_fechado: form.produto_fechado,
+        permite_sabor: form.permite_sabor,
+        permite_adicionais: form.permite_adicionais,
+      };
+
+      const payloadComColuna = {
+        ...payloadBase,
+        descricao: form.descricao || null,
+        imagem_url: imgUrl || null,
+      };
+
+      let prodId = produto?.id;
+
+      if (produto) {
+        const { error } = await supabase.from("produtos").update(payloadComColuna).eq("id", produto.id);
+        if (error) {
+          if (error.code === "PGRST204" || error.message.includes("imagem_url")) {
+            const fallbackDesc = embutirImagemNaDescricao(form.descricao, imgUrl);
+            const { error: errFb } = await supabase
+              .from("produtos")
+              .update({ ...payloadBase, descricao: fallbackDesc || null })
+              .eq("id", produto.id);
+            if (errFb) throw new Error(errFb.message);
+          } else {
+            throw new Error(error.message);
+          }
+        }
+      } else {
+        const { data, error } = await supabase.from("produtos").insert(payloadComColuna).select("id").single();
+        if (error) {
+          if (error.code === "PGRST204" || error.message.includes("imagem_url")) {
+            const fallbackDesc = embutirImagemNaDescricao(form.descricao, imgUrl);
+            const { data: dFb, error: errFb } = await supabase
+              .from("produtos")
+              .insert({ ...payloadBase, descricao: fallbackDesc || null })
+              .select("id")
+              .single();
+            if (errFb || !dFb) throw new Error(errFb?.message ?? "Erro ao criar produto");
+            prodId = dFb.id;
+          } else {
+            throw new Error(error.message);
+          }
+        } else if (data) {
+          prodId = data.id;
+        }
+      }
+
+      // sync sabores
+      await supabase.from("produto_sabores").delete().eq("produto_id", prodId!);
+      if (form.sabores.length) {
+        await supabase.from("produto_sabores").insert(form.sabores.map((sid) => ({ produto_id: prodId!, sabor_id: sid })));
+      }
+      // sync adicionais
+      await supabase.from("produto_adicionais").delete().eq("produto_id", prodId!);
+      if (form.adicionais.length) {
+        await supabase.from("produto_adicionais").insert(form.adicionais.map((aid) => ({ produto_id: prodId!, adicional_id: aid })));
+      }
+
+      toast.success(produto ? "Produto atualizado com sucesso!" : "Produto criado com sucesso!");
+      qc.invalidateQueries({ queryKey: ["produtos-admin"] });
+      qc.invalidateQueries({ queryKey: ["produtos-novo-pedido"] });
+      qc.invalidateQueries({ queryKey: ["cardapio-produtos"] });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao salvar produto");
+    } finally {
+      setSaving(false);
     }
-    // sync sabores
-    await supabase.from("produto_sabores").delete().eq("produto_id", prodId!);
-    if (form.sabores.length) {
-      await supabase.from("produto_sabores").insert(form.sabores.map((sid) => ({ produto_id: prodId!, sabor_id: sid })));
-    }
-    // sync adicionais
-    await supabase.from("produto_adicionais").delete().eq("produto_id", prodId!);
-    if (form.adicionais.length) {
-      await supabase.from("produto_adicionais").insert(form.adicionais.map((aid) => ({ produto_id: prodId!, adicional_id: aid })));
-    }
-    toast.success(produto ? "Atualizado" : "Produto criado");
-    qc.invalidateQueries({ queryKey: ["produtos-admin"] });
-    qc.invalidateQueries({ queryKey: ["produtos-novo-pedido"] });
-    onOpenChange(false);
   }
 
   function toggleArr(key: "sabores" | "adicionais", id: string) {
@@ -353,8 +486,81 @@ function ProdutoDialog({ open, onOpenChange, produto }: { open: boolean; onOpenC
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{produto ? "Editar produto" : "Novo produto"}</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div><Label>Nome*</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+
+          {/* Upload de Imagem para o Cardápio Digital */}
+          <div className="rounded-lg border border-border p-3.5 bg-muted/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="font-semibold flex items-center gap-2">
+                <ImageIcon className="size-4 text-primary" />
+                Foto de exibição no Cardápio Digital
+              </Label>
+              {form.imagem_url && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive text-xs h-7 px-2"
+                  onClick={() => setForm((f) => ({ ...f, imagem_url: "" }))}
+                >
+                  <Trash2 className="size-3.5 mr-1" /> Remover foto
+                </Button>
+              )}
+            </div>
+
+            <div className="flex items-start gap-4 flex-wrap sm:flex-nowrap">
+              <div className="size-24 rounded-lg border-2 border-dashed border-border bg-muted/40 flex items-center justify-center overflow-hidden shrink-0 relative">
+                {form.imagem_url ? (
+                  <img src={form.imagem_url} alt="Prévia" className="size-full object-cover" />
+                ) : (
+                  <div className="text-center p-2 text-muted-foreground">
+                    <ImageIcon className="size-8 mx-auto mb-1 opacity-40" />
+                    <span className="text-[10px] block leading-tight">Sem foto</span>
+                  </div>
+                )}
+                {uploadingImg && (
+                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                    <Loader2 className="size-6 animate-spin text-primary" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleUploadFoto}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingImg}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="gap-1.5"
+                  >
+                    {uploadingImg ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" /> Enviando imagem...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="size-4" /> {form.imagem_url ? "Alterar foto..." : "Upload de foto..."}
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Carregue a foto do prato/bebida (PNG, JPG, WEBP). A imagem é otimizada e salva no banco de dados para exibição instantânea no cardápio digital do cliente.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} /></div>
           <div className="grid sm:grid-cols-3 gap-3">
             <div>
@@ -404,8 +610,11 @@ function ProdutoDialog({ open, onOpenChange, produto }: { open: boolean; onOpenC
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={salvar} className="bg-primary">Salvar</Button>
+          <Button variant="ghost" disabled={saving} onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={salvar} disabled={saving} className="bg-primary">
+            {saving ? <Loader2 className="size-4 animate-spin mr-1" /> : null}
+            Salvar
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

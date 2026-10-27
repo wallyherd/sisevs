@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -7,15 +7,32 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfigLoja } from "@/hooks/use-config-loja";
 import { brl } from "@/lib/format";
 import { toast } from "sonner";
-import { Package, Plus, Pencil, ArrowDown, ArrowUp, AlertTriangle, History, Search } from "lucide-react";
+import {
+  Package,
+  Plus,
+  Pencil,
+  ArrowDown,
+  ArrowUp,
+  AlertTriangle,
+  History,
+  Search,
+  Layers,
+  Save,
+  Check,
+  X,
+  Loader2,
+  SlidersHorizontal,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/estoque")({
   head: () => ({ meta: [{ title: "Estoque — FitLife" }] }),
@@ -39,6 +56,7 @@ function EstoquePage() {
   const { diasAlertaVencimento } = useConfigLoja();
   const [editar, setEditar] = useState<Item | null>(null);
   const [novo, setNovo] = useState(false);
+  const [edicaoLote, setEdicaoLote] = useState(false);
   const [movItem, setMovItem] = useState<Item | null>(null);
   const [histItem, setHistItem] = useState<Item | null>(null);
 
@@ -53,6 +71,24 @@ function EstoquePage() {
       return (data ?? []) as Item[];
     },
   });
+
+  const categoriasDisponiveis = useMemo(() => {
+    const setCats = new Set<string>();
+    CATEGORIAS.forEach((c) => setCats.add(c));
+    itens.forEach((i) => {
+      if (i.categoria) setCats.add(i.categoria);
+    });
+    return Array.from(setCats).sort();
+  }, [itens]);
+
+  const contagemPorCategoria = useMemo(() => {
+    const map: Record<string, number> = {};
+    itens.forEach((i) => {
+      const cat = i.categoria || "Outros";
+      map[cat] = (map[cat] || 0) + 1;
+    });
+    return map;
+  }, [itens]);
 
   const limiteVenc = diasAlertaVencimento * 24 * 3600 * 1000;
   const agora = Date.now();
@@ -94,9 +130,20 @@ function EstoquePage() {
           <Package className="size-6 text-primary" />
           <h1 className="text-2xl font-heading font-bold">Estoque</h1>
         </div>
-        <Button onClick={() => setNovo(true)} className="bg-gold text-gold-foreground hover:bg-gold/90">
-          <Plus className="size-4 mr-1" /> Novo item
-        </Button>
+        <div className="flex items-center gap-2">
+          {perfil?.role === "admin" && (
+            <Button
+              variant="outline"
+              onClick={() => setEdicaoLote(true)}
+              className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10 shadow-sm"
+            >
+              <Layers className="size-4" /> Edição em Lote
+            </Button>
+          )}
+          <Button onClick={() => setNovo(true)} className="bg-gold text-gold-foreground hover:bg-gold/90">
+            <Plus className="size-4 mr-1" /> Novo item
+          </Button>
+        </div>
       </div>
 
       {(baixo.length > 0 || vencendo.length > 0 || vencido.length > 0) && (
@@ -109,6 +156,60 @@ function EstoquePage() {
           {vencido.length > 0 && <div className="text-sm text-red-600">{vencido.length} item(ns) vencido(s)</div>}
         </Card>
       )}
+
+      {/* ── Barra de Filtro Rápido por Categorias ── */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-none">
+        <button
+          type="button"
+          onClick={() => setCategoria("todas")}
+          className={
+            "px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 border " +
+            (categoria === "todas"
+              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+              : "bg-background text-muted-foreground border-border hover:bg-muted hover:text-foreground")
+          }
+        >
+          <span>Todas Categorias</span>
+          <Badge
+            variant="secondary"
+            className={
+              "px-1.5 py-0 text-[10px] font-semibold h-4 " +
+              (categoria === "todas" ? "bg-primary-foreground/20 text-primary-foreground" : "")
+            }
+          >
+            {itens.length}
+          </Badge>
+        </button>
+
+        {categoriasDisponiveis.map((cat) => {
+          const qtd = contagemPorCategoria[cat] || 0;
+          const ativo = categoria === cat;
+          return (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCategoria(cat)}
+              className={
+                "px-3 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 border " +
+                (ativo
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-background text-muted-foreground border-border hover:bg-muted hover:text-foreground")
+              }
+            >
+              <span>{cat}</span>
+              <Badge
+                variant="secondary"
+                className={
+                  "px-1.5 py-0 text-[10px] font-semibold h-4 " +
+                  (ativo ? "bg-primary-foreground/20 text-primary-foreground" : "")
+                }
+              >
+                {qtd}
+              </Badge>
+            </button>
+          );
+        })}
+      </div>
 
       <Card className="p-3 mb-4 flex flex-wrap gap-2 items-end">
         <div className="flex-1 min-w-[200px]">
@@ -124,7 +225,7 @@ function EstoquePage() {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas</SelectItem>
-              {Array.from(new Set([...CATEGORIAS, ...itens.map(i => i.categoria).filter(Boolean)])).map(c => <SelectItem key={c as string} value={c as string}>{c as string}</SelectItem>)}
+              {categoriasDisponiveis.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -180,9 +281,25 @@ function EstoquePage() {
         </table>
       </div>
 
-      {(novo || editar) && <ItemForm item={editar} categoriasDisponiveis={Array.from(new Set([...CATEGORIAS, ...itens.map(i => i.categoria).filter(Boolean)]))} onClose={() => { setNovo(false); setEditar(null); qc.invalidateQueries({ queryKey: ["estoque"] }); }} onMovimentar={(it) => { setEditar(null); setNovo(false); setMovItem(it); }} />}
+      {(novo || editar) && (
+        <ItemForm
+          item={editar}
+          categoriasDisponiveis={categoriasDisponiveis}
+          onClose={() => { setNovo(false); setEditar(null); qc.invalidateQueries({ queryKey: ["estoque"] }); }}
+          onMovimentar={(it) => { setEditar(null); setNovo(false); setMovItem(it); }}
+        />
+      )}
       {movItem && <MovDialog item={movItem} onClose={() => { setMovItem(null); qc.invalidateQueries({ queryKey: ["estoque"] }); }} />}
       {histItem && <HistDialog item={histItem} onClose={() => setHistItem(null)} />}
+
+      {/* Modal de Edição em Lote */}
+      <EdicaoLoteDialog
+        open={edicaoLote}
+        onClose={() => setEdicaoLote(false)}
+        itens={itens}
+        categoriasDisponiveis={categoriasDisponiveis}
+        onSuccess={() => qc.invalidateQueries({ queryKey: ["estoque"] })}
+      />
     </>
   );
 }
@@ -423,3 +540,503 @@ function HistDialog({ item, onClose }: { item: Item; onClose: () => void }) {
     </Dialog>
   );
 }
+
+// ─────────────────────────── EDIÇÃO EM LOTE ───────────────────────────
+
+function EdicaoLoteDialog({
+  open,
+  onClose,
+  itens,
+  categoriasDisponiveis,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  itens: Item[];
+  categoriasDisponiveis: string[];
+  onSuccess: () => void;
+}) {
+  const [edited, setEdited] = useState<
+    Record<
+      string,
+      {
+        categoria: string;
+        quantidade_atual: number;
+        estoque_minimo: number;
+        custo_unitario: number;
+        ativo: boolean;
+      }
+    >
+  >({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [buscaLote, setBuscaLote] = useState("");
+  const [categoriaLote, setCategoriaLote] = useState("todas");
+  const [saving, setSaving] = useState(false);
+
+  // Ações em massa
+  const [massaCategoria, setMassaCategoria] = useState("");
+  const [massaEstoqueMin, setMassaEstoqueMin] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      const initial: Record<
+        string,
+        {
+          categoria: string;
+          quantidade_atual: number;
+          estoque_minimo: number;
+          custo_unitario: number;
+          ativo: boolean;
+        }
+      > = {};
+      itens.forEach((it) => {
+        initial[it.id] = {
+          categoria: it.categoria || "Outros",
+          quantidade_atual: Number(it.quantidade_atual) || 0,
+          estoque_minimo: Number(it.estoque_minimo) || 0,
+          custo_unitario: Number(it.custo_unitario) || 0,
+          ativo: it.ativo,
+        };
+      });
+      setEdited(initial);
+      setSelectedIds(new Set());
+      setBuscaLote("");
+      setCategoriaLote("todas");
+      setMassaCategoria("");
+      setMassaEstoqueMin("");
+    }
+  }, [open, itens]);
+
+  const itensFiltrados = useMemo(() => {
+    const q = buscaLote.trim().toLowerCase();
+    return itens.filter((it) => {
+      if (q && !it.nome.toLowerCase().includes(q)) return false;
+      const currentCat = edited[it.id]?.categoria ?? it.categoria ?? "Outros";
+      if (categoriaLote !== "todas" && currentCat !== categoriaLote) return false;
+      return true;
+    });
+  }, [itens, buscaLote, categoriaLote, edited]);
+
+  function isLinhaAlterada(it: Item) {
+    const cur = edited[it.id];
+    if (!cur) return false;
+    return (
+      (cur.categoria || "Outros") !== (it.categoria || "Outros") ||
+      cur.quantidade_atual !== Number(it.quantidade_atual) ||
+      cur.estoque_minimo !== Number(it.estoque_minimo) ||
+      cur.custo_unitario !== Number(it.custo_unitario) ||
+      cur.ativo !== it.ativo
+    );
+  }
+
+  const totalModificados = useMemo(() => {
+    return itens.filter(isLinhaAlterada).length;
+  }, [itens, edited]);
+
+  function handleSelectAll() {
+    if (selectedIds.size === itensFiltrados.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(itensFiltrados.map((i) => i.id)));
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function updateField(id: string, field: string, value: any) {
+    setEdited((prev) => ({
+      ...prev,
+      [id]: {
+        ...(prev[id] ?? {
+          categoria: "Outros",
+          quantidade_atual: 0,
+          estoque_minimo: 0,
+          custo_unitario: 0,
+          ativo: true,
+        }),
+        [field]: value,
+      },
+    }));
+  }
+
+  function aplicarCategoriaEmMassa() {
+    if (!massaCategoria || selectedIds.size === 0) {
+      toast.error("Selecione itens e uma categoria para aplicar");
+      return;
+    }
+    setEdited((prev) => {
+      const next = { ...prev };
+      selectedIds.forEach((id) => {
+        if (next[id]) {
+          next[id] = { ...next[id], categoria: massaCategoria };
+        }
+      });
+      return next;
+    });
+    toast.success(`Categoria "${massaCategoria}" aplicada a ${selectedIds.size} item(ns)!`);
+  }
+
+  function aplicarEstoqueMinEmMassa() {
+    const val = Number(massaEstoqueMin);
+    if (isNaN(val) || val < 0 || selectedIds.size === 0) {
+      toast.error("Informe um estoque mínimo válido (≥ 0) e selecione itens");
+      return;
+    }
+    setEdited((prev) => {
+      const next = { ...prev };
+      selectedIds.forEach((id) => {
+        if (next[id]) {
+          next[id] = { ...next[id], estoque_minimo: val };
+        }
+      });
+      return next;
+    });
+    toast.success(`Estoque mínimo ${val} aplicado a ${selectedIds.size} item(ns)!`);
+  }
+
+  function aplicarStatusEmMassa(novoStatus: boolean) {
+    if (selectedIds.size === 0) {
+      toast.error("Selecione itens para alterar o status");
+      return;
+    }
+    setEdited((prev) => {
+      const next = { ...prev };
+      selectedIds.forEach((id) => {
+        if (next[id]) {
+          next[id] = { ...next[id], ativo: novoStatus };
+        }
+      });
+      return next;
+    });
+    toast.success(`${novoStatus ? "Ativados" : "Desativados"} ${selectedIds.size} item(ns)!`);
+  }
+
+  async function salvarTudo() {
+    const alterados = itens.filter(isLinhaAlterada);
+    if (alterados.length === 0) {
+      toast.info("Nenhuma alteração pendente");
+      onClose();
+      return;
+    }
+
+    setSaving(true);
+    let sucessos = 0;
+    let erros = 0;
+
+    for (const it of alterados) {
+      const cur = edited[it.id];
+      const payload: any = {
+        categoria: cur.categoria,
+        quantidade_atual: cur.quantidade_atual,
+        estoque_minimo: cur.estoque_minimo,
+        custo_unitario: cur.custo_unitario,
+        ativo: cur.ativo,
+      };
+
+      const { error } = await supabase.from("estoque_itens").update(payload).eq("id", it.id);
+      if (error) {
+        console.error("Erro no lote item:", it.nome, error);
+        erros++;
+      } else {
+        sucessos++;
+      }
+    }
+
+    setSaving(false);
+    if (erros > 0) {
+      toast.warning(`${sucessos} itens atualizados, mas ${erros} apresentaram erro.`);
+    } else {
+      toast.success(`${sucessos} itens do estoque atualizados com sucesso!`);
+    }
+    onSuccess();
+    onClose();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && !saving && onClose()}>
+      <DialogContent className="max-w-5xl w-full max-h-[92vh] flex flex-col p-4 sm:p-6">
+        <DialogHeader className="pb-2 border-b border-border">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Layers className="size-5 text-primary" />
+              <DialogTitle className="text-xl">Edição em Lote do Estoque</DialogTitle>
+            </div>
+            {totalModificados > 0 && (
+              <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                {totalModificados} item(ns) modificado(s)
+              </Badge>
+            )}
+          </div>
+          <DialogDescription className="text-xs text-muted-foreground mt-1">
+            Edite múltiplos produtos de uma vez em formato de planilha ou aplique valores em massa para os itens selecionados. As alterações só são gravadas ao clicar em "Salvar Alterações".
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Barra de Filtros Internos da Edição */}
+        <div className="flex flex-wrap items-center gap-2 py-2">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={buscaLote}
+              onChange={(e) => setBuscaLote(e.target.value)}
+              placeholder="Filtrar produtos por nome..."
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+          <div className="w-[180px]">
+            <Select value={categoriaLote} onValueChange={setCategoriaLote}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas Categorias</SelectItem>
+                {categoriasDisponiveis.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Barra de Ações Rápidas em Massa para os Selecionados */}
+        {selectedIds.size > 0 && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-2.5 flex flex-wrap gap-2 items-center text-xs animate-in fade-in-50 duration-200">
+            <span className="font-semibold text-primary">
+              {selectedIds.size} selecionado(s):
+            </span>
+
+            {/* Aplicar Categoria */}
+            <div className="flex items-center gap-1.5 border-l border-primary/20 pl-2">
+              <Select value={massaCategoria} onValueChange={setMassaCategoria}>
+                <SelectTrigger className="h-7 text-xs w-36 bg-background"><SelectValue placeholder="Definir categoria" /></SelectTrigger>
+                <SelectContent>
+                  {categoriasDisponiveis.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="secondary" className="h-7 text-xs px-2" onClick={aplicarCategoriaEmMassa}>
+                Aplicar
+              </Button>
+            </div>
+
+            {/* Aplicar Estoque Mínimo */}
+            <div className="flex items-center gap-1.5 border-l border-primary/20 pl-2">
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="Mínimo"
+                value={massaEstoqueMin}
+                onChange={(e) => setMassaEstoqueMin(e.target.value)}
+                className="h-7 text-xs w-20 bg-background"
+              />
+              <Button size="sm" variant="secondary" className="h-7 text-xs px-2" onClick={aplicarEstoqueMinEmMassa}>
+                Aplicar
+              </Button>
+            </div>
+
+            {/* Aplicar Status */}
+            <div className="flex items-center gap-1 border-l border-primary/20 pl-2">
+              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => aplicarStatusEmMassa(true)}>
+                Ativar
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => aplicarStatusEmMassa(false)}>
+                Desativar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Tabela Planilha de Edição */}
+        <div className="flex-1 overflow-auto border border-border rounded-lg min-h-[260px] max-h-[50vh] relative">
+          <table className="w-full text-xs">
+            <thead className="bg-muted/80 text-muted-foreground uppercase sticky top-0 z-10 border-b border-border backdrop-blur-sm">
+              <tr>
+                <th className="py-2 px-3 text-center w-10">
+                  <Checkbox
+                    checked={itensFiltrados.length > 0 && selectedIds.size === itensFiltrados.length}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Selecionar todos os produtos"
+                  />
+                </th>
+                <th className="text-left py-2 px-3 min-w-[180px]">Produto</th>
+                <th className="text-left py-2 px-2 min-w-[160px]">Categoria</th>
+                <th className="text-right py-2 px-2 min-w-[120px]">Qtd Atual</th>
+                <th className="text-right py-2 px-2 min-w-[110px]">Estoque Mín.</th>
+                <th className="text-right py-2 px-2 min-w-[110px]">Custo Un. (R$)</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Ativo</th>
+                <th className="text-center py-2 px-2 w-16">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {itensFiltrados.map((it) => {
+                const cur = edited[it.id] ?? {
+                  categoria: it.categoria || "Outros",
+                  quantidade_atual: it.quantidade_atual,
+                  estoque_minimo: it.estoque_minimo,
+                  custo_unitario: it.custo_unitario,
+                  ativo: it.ativo,
+                };
+                const alterada = isLinhaAlterada(it);
+                const selecionada = selectedIds.has(it.id);
+
+                return (
+                  <tr
+                    key={it.id}
+                    className={
+                      "transition-colors " +
+                      (alterada
+                        ? "bg-amber-500/10 dark:bg-amber-500/15"
+                        : selecionada
+                        ? "bg-primary/5"
+                        : "hover:bg-muted/40")
+                    }
+                  >
+                    {/* Checkbox */}
+                    <td className="py-1.5 px-3 text-center">
+                      <Checkbox
+                        checked={selecionada}
+                        onCheckedChange={() => toggleSelect(it.id)}
+                        aria-label={`Selecionar ${it.nome}`}
+                      />
+                    </td>
+
+                    {/* Nome */}
+                    <td className="py-1.5 px-3 font-medium">
+                      <div className="truncate max-w-[220px]" title={it.nome}>
+                        {it.nome}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {it.unidade_medida}
+                      </div>
+                    </td>
+
+                    {/* Categoria */}
+                    <td className="py-1.5 px-2">
+                      <Select
+                        value={cur.categoria || "Outros"}
+                        onValueChange={(v) => updateField(it.id, "categoria", v)}
+                      >
+                        <SelectTrigger className="h-7 text-xs w-full bg-background"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {categoriasDisponiveis.map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+
+                    {/* Quantidade Atual */}
+                    <td className="py-1.5 px-2 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Input
+                          type="number"
+                          step="any"
+                          value={cur.quantidade_atual}
+                          onChange={(e) => updateField(it.id, "quantidade_atual", parseFloat(e.target.value) || 0)}
+                          className="h-7 text-xs w-20 text-right font-medium tabular-nums bg-background"
+                        />
+                      </div>
+                    </td>
+
+                    {/* Estoque Mínimo */}
+                    <td className="py-1.5 px-2 text-right">
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={cur.estoque_minimo}
+                        onChange={(e) => updateField(it.id, "estoque_minimo", parseFloat(e.target.value) || 0)}
+                        className="h-7 text-xs w-20 text-right tabular-nums bg-background"
+                      />
+                    </td>
+
+                    {/* Custo Unitário */}
+                    <td className="py-1.5 px-2 text-right">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={cur.custo_unitario}
+                        onChange={(e) => updateField(it.id, "custo_unitario", parseFloat(e.target.value) || 0)}
+                        className="h-7 text-xs w-24 text-right tabular-nums bg-background"
+                      />
+                    </td>
+
+                    {/* Ativo */}
+                    <td className="py-1.5 px-2 text-center">
+                      <Switch
+                        checked={cur.ativo}
+                        onCheckedChange={(v) => updateField(it.id, "ativo", v)}
+                        aria-label="Ativo/Inativo"
+                      />
+                    </td>
+
+                    {/* Status Badge */}
+                    <td className="py-1.5 px-2 text-center">
+                      {alterada ? (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500 text-white shadow-xs">
+                          Modificado
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {itensFiltrados.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="text-center py-12 text-muted-foreground">
+                    Nenhum produto corresponde aos filtros da edição.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Rodapé da Edição em Lote */}
+        <DialogFooter className="pt-3 border-t border-border flex items-center justify-between sm:justify-between w-full">
+          <div className="text-xs text-muted-foreground">
+            {totalModificados > 0 ? (
+              <span className="text-amber-600 dark:text-amber-400 font-medium">
+                {totalModificados} produto(s) com alterações não salvas
+              </span>
+            ) : (
+              <span>Nenhum produto alterado</span>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" disabled={saving} onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={salvarTudo}
+              disabled={saving || totalModificados === 0}
+              className="bg-primary shadow-sm"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin mr-1.5" /> Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="size-4 mr-1.5" /> Salvar {totalModificados > 0 ? `(${totalModificados})` : ""}
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

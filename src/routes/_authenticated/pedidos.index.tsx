@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,9 +17,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useConfigLoja } from "@/hooks/use-config-loja";
 import { useAuth } from "@/hooks/use-auth";
+import { z } from "zod";
+
+const pedidosSearchSchema = z.object({
+  tab: z.enum(["comandas", "mesas"]).optional(),
+  mesa: z.string().optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/pedidos/")({
   head: () => ({ meta: [{ title: "Comandas — FitLife" }] }),
+  validateSearch: (search) => pedidosSearchSchema.parse(search),
   component: ComandasListPage,
 });
 
@@ -32,9 +39,11 @@ const FILTROS = [
 
 function ComandasListPage() {
   const qc = useQueryClient();
-  const [abaAtiva, setAbaAtiva] = useState("comandas");
+  const search = Route.useSearch();
+  const navigate = useNavigate();
+  const [abaAtiva, setAbaAtiva] = useState<string>(search.tab || (search.mesa ? "mesas" : "comandas"));
   const [filtro, setFiltro] = useState<(typeof FILTROS)[number]["key"]>("abertas");
-  const [mesaAtivaId, setMesaAtivaId] = useState<string | null>(null);
+  const [mesaAtivaId, setMesaAtivaId] = useState<string | null>(search.mesa || null);
   const [editandoMesa, setEditandoMesa] = useState<any>(null);
   const [novaMesaOpen, setNovaMesaOpen] = useState(false);
   const { isAdmin, user } = useAuth();
@@ -67,12 +76,48 @@ function ComandasListPage() {
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
 
+  useEffect(() => {
+    if (search.mesa) {
+      setMesaAtivaId(search.mesa);
+      setAbaAtiva("mesas");
+    } else if (search.tab) {
+      setAbaAtiva(search.tab);
+    }
+  }, [search.mesa, search.tab]);
+
+  function abrirMesa(id: string) {
+    setMesaAtivaId(id);
+    navigate({
+      to: "/pedidos" as any,
+      search: { tab: "mesas", mesa: id } as any,
+      replace: true,
+    });
+  }
+
+  function fecharMesa() {
+    setMesaAtivaId(null);
+    navigate({
+      to: "/pedidos" as any,
+      search: { tab: "mesas", mesa: undefined } as any,
+      replace: true,
+    });
+  }
+
+  function handleTabChange(novaAba: string) {
+    setAbaAtiva(novaAba);
+    navigate({
+      to: "/pedidos" as any,
+      search: { tab: novaAba as any, mesa: novaAba === "mesas" ? mesaAtivaId || undefined : undefined } as any,
+      replace: true,
+    });
+  }
+
   const { data: mesas = [] } = useQuery({
     queryKey: ["mesas-list"],
     queryFn: async () => {
       const { data } = await supabase
         .from("mesas")
-        .select("*, pedidos(id, total, status_comanda)")
+        .select("*, pedidos(id, numero, total, status_comanda, cliente_nome_rapido, cliente:clientes(nome))")
         .order("numero", { ascending: true });
       return data ?? [];
     },
@@ -90,7 +135,7 @@ function ComandasListPage() {
         </Button>
       </div>
 
-      <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-4">
+      <Tabs value={abaAtiva} onValueChange={handleTabChange} className="space-y-4">
         <TabsList>
           <TabsTrigger value="comandas">Comandas Avulsas</TabsTrigger>
           <TabsTrigger value="mesas">Mesas</TabsTrigger>
@@ -173,14 +218,14 @@ function ComandasListPage() {
                       <span>{comandasAtivas.length} comanda(s)</span>
                       <span>{brl(totalMesa)}</span>
                     </div>
-                    <Button variant="secondary" size="sm" className="w-full mt-2" onClick={() => setMesaAtivaId(m.id)}>
+                    <Button variant="secondary" size="sm" className="w-full mt-2" onClick={() => abrirMesa(m.id)}>
                       Ver / Gerenciar
                     </Button>
                   </div>
                 ) : (
                   <div className="mt-auto space-y-2">
                     <div className="text-xs text-muted-foreground text-center py-2">Mesa disponível</div>
-                    <Button size="sm" className="w-full bg-gold hover:bg-gold/90 text-gold-foreground" onClick={() => setMesaAtivaId(m.id)}>
+                    <Button size="sm" className="w-full bg-gold hover:bg-gold/90 text-gold-foreground" onClick={() => abrirMesa(m.id)}>
                       Abrir Mesa
                     </Button>
                   </div>
@@ -193,7 +238,7 @@ function ComandasListPage() {
       </TabsContent>
       </Tabs>
 
-      {mesaAtivaId && <MesaDialog mesa={mesas.find((m: any) => m.id === mesaAtivaId)} onClose={() => setMesaAtivaId(null)} />}
+      {mesaAtivaId && <MesaDialog mesa={mesas.find((m: any) => m.id === mesaAtivaId)} onClose={fecharMesa} />}
       
       {(novaMesaOpen || editandoMesa) && (
         <NovaMesaDialog 
@@ -292,17 +337,30 @@ function MesaDialog({ mesa, onClose }: { mesa: any, onClose: () => void }) {
             <div className="font-semibold text-sm">Comandas da Mesa ({comandasAtivas.length})</div>
             {comandasAtivas.length > 0 ? (
               <div className="divide-y border rounded-lg">
-                {comandasAtivas.map((p: any) => (
-                  <div key={p.id} className="flex justify-between items-center p-3 hover:bg-muted/50">
-                    <span className="font-medium">#{p.id.split('-')[0]}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold">{brl(p.total)}</span>
-                      <Button size="sm" variant="secondary" asChild>
-                        <Link to={"/pedidos/$id" as any} params={{ id: p.id } as any}>Abrir</Link>
-                      </Button>
+                {comandasAtivas.map((p: any) => {
+                  const nomeCliente = p.cliente?.nome || p.cliente_nome_rapido || "Consumidor balcão";
+                  const numComanda = p.numero ? `#${p.numero}` : `#${p.id.split('-')[0]}`;
+                  return (
+                    <div key={p.id} className="flex justify-between items-center p-3 hover:bg-muted/50">
+                      <div className="flex flex-col min-w-0 pr-2">
+                        <span className="font-semibold text-foreground truncate">{nomeCliente}</span>
+                        <span className="text-xs text-muted-foreground">{numComanda}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="font-semibold">{brl(p.total)}</span>
+                        <Button size="sm" variant="secondary" asChild>
+                          <Link 
+                            to={"/pedidos/$id" as any} 
+                            params={{ id: p.id } as any}
+                            search={{ mesa: mesa.id } as any}
+                          >
+                            Abrir
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-6 text-sm text-muted-foreground bg-muted/20 rounded-lg">

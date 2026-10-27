@@ -26,8 +26,15 @@ import {
   PREPARO_COLOR, PREPARO_LABEL, MOTIVOS_CANCELAMENTO,
 } from "@/lib/pedido-fluxo";
 
+import { z } from "zod";
+
+const comandaSearchSchema = z.object({
+  mesa: z.string().optional(),
+});
+
 export const Route = createFileRoute("/_authenticated/pedidos/$id")({
   head: () => ({ meta: [{ title: "Comanda — FitLife" }] }),
+  validateSearch: (search) => comandaSearchSchema.parse(search),
   component: ComandaDetailPage,
 });
 
@@ -49,6 +56,7 @@ type Item = {
 
 function ComandaDetailPage() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { isAdmin } = useAuth();
@@ -60,7 +68,7 @@ function ComandaDetailPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("pedidos")
-        .select("*, cliente:clientes(id,nome,telefone), pedido_itens(*)")
+        .select("*, cliente:clientes(id,nome,telefone), mesa:mesas(id,numero), pedido_itens(*)")
         .eq("id", id).maybeSingle();
       return data as any;
     },
@@ -116,10 +124,22 @@ function ComandaDetailPage() {
     else { toast.success("Comanda cancelada"); qc.invalidateQueries({ queryKey: ["comanda", id] }); }
   }
 
+  function voltar() {
+    const mesaVoltar = search.mesa || comanda?.mesa_id;
+    if (mesaVoltar) {
+      navigate({
+        to: "/pedidos" as any,
+        search: { tab: "mesas", mesa: mesaVoltar } as any,
+      });
+    } else {
+      navigate({ to: "/pedidos" as any });
+    }
+  }
+
   return (
     <>
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <Button variant="ghost" size="icon" onClick={() => navigate({ to: "/pedidos" as any })}>
+        <Button variant="ghost" size="icon" onClick={voltar}>
           <ArrowLeft className="size-4" />
         </Button>
         <div className="flex-1 min-w-[180px]">
